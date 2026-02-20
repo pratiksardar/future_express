@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# The Future Express
 
-## Getting Started
+**Tomorrow's News, Today's Odds.**
 
-First, run the development server:
+A retro newspaper–themed web app that turns prediction market data from Polymarket and Kalshi into AI-generated news articles.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Stack
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **Next.js 15** (App Router), **TypeScript**, **Tailwind CSS**
+- **PostgreSQL** + **Drizzle ORM**
+- **OpenAI** for article generation
+- **Inngest** for cron jobs (4-hour edition pipeline, breaking check)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. **Clone and install**
+   ```bash
+   cd future-express && npm install
+   ```
 
-## Learn More
+2. **Database (Docker, for local dev)**
+   - Start PostgreSQL in Docker (Docker Desktop must be running):
+     ```bash
+     docker compose up -d
+     ```
+   - Wait for the DB to be ready (a few seconds), then push the schema:
+     ```bash
+     npx drizzle-kit push
+     ```
+   - Connection string is already set in `.env.example`: `postgresql://postgres:postgres@localhost:5432/future_express`
+   - To stop: `docker compose down`. Data persists in a Docker volume.
 
-To learn more about Next.js, take a look at the following resources:
+   **Without Docker:** Create a PostgreSQL database and set `DATABASE_URL` in `.env`. Then run `npx drizzle-kit push`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+3. **Environment variables** (see `.env.example`)
+   - `DATABASE_URL` – PostgreSQL connection string
+   - **Article generation:** `OPENAI_API_KEY` (or for dev use **OpenRouter**: set `OPENROUTER_API_KEY` and `OPENROUTER_MODEL`, e.g. `arcee-ai/trinity-large-preview:free`)
+   - Optional: `TAVILY_API_KEY` or `BRAVE_API_KEY` for web research
+   - Optional: `KALSHI_API_KEY` for Kalshi API
+   - Optional: `NEXT_PUBLIC_POLYMARKET_AFFILIATE_URL`, `NEXT_PUBLIC_KALSHI_AFFILIATE_URL` for affiliate links
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+4. **Run**
+   ```bash
+   npm run dev
+   ```
+   Open [http://localhost:3000](http://localhost:3000).
 
-## Deploy on Vercel
+## Populating data
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Ingest markets:** `POST /api/ingest` (Polymarket + Kalshi).
+- **Run edition cron once (ingest + new volume + articles):** `POST /api/cron/edition`. Requires `OPENAI_API_KEY` or `OPENROUTER_API_KEY` for article generation.
+- **One-shot: ingest then generate articles for top 10–15 trending:**  
+  `POST /api/ingest` with body `{ "generateArticles": true }`. This refreshes market data (sorted by 24h volume), then creates short news articles for up to 15 top-trending markets that don’t already have an article. Those articles appear in the newspaper feed on the homepage.
+- **Generate articles only:** `POST /api/articles/generate` with body `{ "morningEdition": true }` (top 10–15 trending) or `{ "marketId": "<uuid>" }`.
+- **Latest edition:** `GET /api/editions/latest` returns the most recently published edition.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+With Inngest connected, the **edition pipeline** runs every 4 hours: it fetches data from prediction markets **once** (Polymarket/Kalshi), saves markets to the DB, creates a new **edition (volume)** with a sequential volume number, and generates short AI articles for the **top 10–15 trending markets**. Those articles are linked to the edition. When users refresh the newspaper, they see the latest edition's articles; odds and volume on the UI are read from the DB (dynamic). Each edition is **browsable historically** via **Past editions** (/editions) and **/edition/[id]** (e.g. "Vol. 12").
+
+## Project structure
+
+- `src/app/` – Pages and API routes
+- `src/components/` – Masthead, ticker, cards, newsletter, etc.
+- `src/lib/db/` – Drizzle schema and client
+- `src/lib/ingestion/` – Polymarket/Kalshi fetch and normalize
+- `src/lib/articles/` – Research, prompts, and generation
+- `src/inngest/` – Cron functions
+
+## Deploy (Vercel)
+
+1. Push to GitHub and import in Vercel.
+2. Set env vars in the Vercel dashboard.
+3. Add a Postgres provider (e.g. Vercel Postgres, Neon) and `DATABASE_URL`.
+4. Optionally configure Inngest cloud for cron.
