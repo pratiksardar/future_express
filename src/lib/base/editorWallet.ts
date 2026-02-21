@@ -23,7 +23,7 @@ export type EditorWalletCheck = {
  * Returns ok: false when balance is below min or env is not configured.
  */
 export async function checkEditorWalletBalance(): Promise<EditorWalletCheck | null> {
-  const address = process.env.EDITOR_WALLET_ADDRESS;
+  const address = process.env.EDITOR_WALLET_ADDRESS?.trim();
   if (!address) return null;
 
   const minStr = process.env.MIN_EDITOR_BALANCE_ETH;
