@@ -88,34 +88,20 @@ export async function generateArticleImage(prompt: string, marketId: string): Pr
           b64;
       }
 
-      if (b64 && b64.startsWith("data:image")) {
-        const base64Data = b64.replace(/^data:image\/\w+;base64,/, "");
-        const filename = `img-${marketId}-${Date.now()}.jpg`;
-        const publicDir = path.join(process.cwd(), "public", "articles");
-        if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir, { recursive: true });
-
-        fs.writeFileSync(path.join(publicDir, filename), Buffer.from(base64Data, "base64"));
-        return `/articles/${filename}`;
+      if (b64 && (b64.startsWith("data:image") || b64.startsWith("http"))) {
+        // Return the data URI or image URL directly to support Vercel Serverless (no local fs writes)
+        return b64;
       } else {
         console.warn("Could not find image payload in OpenRouter response. Falling back to free Pollinations API.");
       }
     }
 
-    // Fallback to picsum photos if no key or openrouter failed (pollinations API appears unstable)
+    // Fallback to picsum photos if no key or openrouter failed
     const seed = Math.floor(Math.random() * 1000000);
     const url = `https://picsum.photos/seed/${seed}/800/500?grayscale`;
 
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("Failed to generate fallback image");
-
-    const buffer = await res.arrayBuffer();
-
-    const filename = `img-${marketId}-${Date.now()}.jpg`;
-    const publicDir = path.join(process.cwd(), "public", "articles");
-    if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir, { recursive: true });
-
-    fs.writeFileSync(path.join(publicDir, filename), Buffer.from(buffer));
-    return `/articles/${filename}`;
+    // Return external URL directly to support Vercel Serverless (no local fs writes)
+    return url;
   } catch (e) {
     console.error("Image gen error", e);
   }
