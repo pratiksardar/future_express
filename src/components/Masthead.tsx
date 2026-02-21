@@ -30,6 +30,7 @@ export function Masthead({ compact, latestEdition, volumeNumber }: { compact?: b
   const displayIssue = new Date().getDate().toString();
 
   const [prices, setPrices] = useState<any>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,tether-gold,kinesis-silver&vs_currencies=usd")
@@ -75,8 +76,20 @@ export function Masthead({ compact, latestEdition, volumeNumber }: { compact?: b
             {/* Sub Issue / Cost Row */}
             <div className="border-t-[3px] border-b-[1px] border-[var(--color-ink)] py-2 sm:py-3 mb-2 flex flex-wrap justify-between items-center text-[9px] sm:text-xs font-bold uppercase tracking-widest font-[family-name:var(--font-ui)] px-2">
               <span className="opacity-90">VOL. {displayVolume} — NO. {displayIssue}</span>
-              <span className="hidden md:inline mx-4 opacity-90 overflow-hidden text-ellipsis whitespace-nowrap">DODGE CITY, {date.toUpperCase()} — 12 PAGES IN 3 SECTIONS</span>
-              <span className="opacity-90">PRICE: 5 CENTS</span>
+              <span className="hidden md:inline mx-4 opacity-90 overflow-hidden text-ellipsis whitespace-nowrap">
+                SUPPORT INDEPENDENT AI JOURNALISM — SHARE FEEDBACK
+              </span>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(process.env.NEXT_PUBLIC_EDITOR_WALLET_ADDRESS || "0x0D2e1e3bE6A63A08EaF42c69DaD6900a748B8Ed9");
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 3000);
+                }}
+                className={`transition-colors border border-transparent px-2 py-0.5 ${copied ? 'bg-[var(--color-ink)] text-[var(--color-paper)]' : 'cursor-pointer hover:border-[var(--color-ink)] opacity-90 hover:opacity-100 hover:bg-[var(--color-paper-warm)]'}`}
+                title="Copy AI Editor Wallet Address"
+              >
+                {copied ? "COPIED ALIAS TO CLIPBOARD" : "PRICE: 50¢ • [TIP THE AI EDITOR]"}
+              </button>
             </div>
 
             {/* Asset Market Tracker Strip */}
