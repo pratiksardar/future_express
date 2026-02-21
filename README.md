@@ -38,6 +38,9 @@ A retro newspaper–themed web app that turns prediction market data from Polyma
    - Optional: `TAVILY_API_KEY` or `BRAVE_API_KEY` for web research
    - Optional: `KALSHI_API_KEY` for Kalshi API
    - Optional: `NEXT_PUBLIC_POLYMARKET_AFFILIATE_URL`, `NEXT_PUBLIC_KALSHI_AFFILIATE_URL` for affiliate links
+- **Phase 1 – Uniswap (swap widget):** `UNISWAP_API_KEY` from [Uniswap Developer Portal](https://developers.uniswap.org/dashboard/)
+- **Phase 1 – Base self-sustaining editor:** `EDITOR_WALLET_ADDRESS` (Base wallet); optional `MIN_EDITOR_BALANCE_ETH` (default `0.001`). When set, the edition cron skips publishing if the wallet balance is below the minimum.
+- **Base Sepolia (dev/test):** Set `USE_BASE_SEPOLIA=true` and `NEXT_PUBLIC_USE_BASE_SEPOLIA=true` to use Base Sepolia for the Uniswap widget and editor wallet balance check. Optional `BASE_RPC_URL=https://sepolia.base.org`. Demo wallet: `0x0D2e1e3bE6A63A08EaF42c69DaD6900a748B8Ed9` (set as `EDITOR_WALLET_ADDRESS` for testing).
 
 4. **Run**
    ```bash
@@ -64,6 +67,13 @@ With Inngest connected, the **edition pipeline** runs every 4 hours: it fetches 
 - `src/lib/ingestion/` – Polymarket/Kalshi fetch and normalize
 - `src/lib/articles/` – Research, prompts, and generation
 - `src/inngest/` – Cron functions
+- `src/lib/uniswap/` – Uniswap Trading API client (quote/swap on Base)
+- `src/lib/base/` – Base chain helpers (editor wallet balance check)
+
+## Phase 1 (Hackathon)
+
+- **Uniswap swap widget:** On each article page, readers can swap ETH → USDC on Base (Uniswap API) to fund Polymarket bets. Set `UNISWAP_API_KEY` and use the "Swap ETH → USDC" block.
+- **Self-sustaining editor:** Set `EDITOR_WALLET_ADDRESS` to a Base wallet; the edition cron checks its ETH balance and returns 503 when below `MIN_EDITOR_BALANCE_ETH`, so the agent "stops publishing when out of funds."
 
 ## Deploy (Vercel)
 

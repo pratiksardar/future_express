@@ -53,7 +53,23 @@ export function normalizePolymarketEvent(event: PolymarketEvent): NormalizedMark
 export function normalizeKalshiMarket(market: KalshiMarket): NormalizedMarket {
   const prob = parseKalshiProbability(market);
   const probStr = prob != null ? String(prob) : "50";
-  const category = inferCategoryFromTitle(market.title ?? "");
+
+  // Map Kalshi's native category strings to our internal categories
+  const kalshiCatMap: Record<string, Category> = {
+    "politics": "politics",
+    "economics": "economy",
+    "financials": "economy",
+    "climate and weather": "science",
+    "science and technology": "science",
+    "crypto": "crypto",
+    "sports": "sports",
+    "culture": "entertainment",
+    "world": "world",
+    "health": "science",
+  };
+  const nativeCat = market.category?.toLowerCase() ?? "";
+  const category = kalshiCatMap[nativeCat] ?? inferCategoryFromTitle(market.title ?? "");
+
   return {
     kalshiTicker: market.ticker,
     kalshiEventTicker: market.event_ticker,

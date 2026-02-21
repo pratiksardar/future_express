@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import fs from "fs";
 import path from "path";
+import { authorizeX402PaymentForImage } from "@/lib/kite/client";
 
 // ==========================================
 // AI MODEL CONFIGURATION
@@ -52,6 +53,10 @@ export async function generateArticleImage(prompt: string, marketId: string): Pr
   const openRouterKey = process.env.OPENROUTER_API_KEY;
 
   try {
+    // Kite AI: Autonomous Agent Payment (Editor pays Photographer via KITE test token)
+    // This is an x402-style micro-payment
+    await authorizeX402PaymentForImage(prompt);
+
     const styledPrompt = `A vintage, retro 1930s-style newspaper editorial illustration or black-and-white photo for an article about: ${prompt}. It should look like it belongs in a classic 1930s broadsheet newspaper.`;
 
     if (openRouterKey) {
@@ -96,11 +101,12 @@ export async function generateArticleImage(prompt: string, marketId: string): Pr
       }
     }
 
-    // Fallback to Pollinations API if no key or openrouter failed
-    const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(styledPrompt)}?width=800&height=500&nologo=true`;
+    // Fallback to picsum photos if no key or openrouter failed (pollinations API appears unstable)
+    const seed = Math.floor(Math.random() * 1000000);
+    const url = `https://picsum.photos/seed/${seed}/800/500?grayscale`;
 
     const res = await fetch(url);
-    if (!res.ok) throw new Error("Failed to generate image via free AI");
+    if (!res.ok) throw new Error("Failed to generate fallback image");
 
     const buffer = await res.arrayBuffer();
 

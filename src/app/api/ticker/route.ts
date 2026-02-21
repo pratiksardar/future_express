@@ -1,11 +1,34 @@
 import { db } from "@/lib/db";
-import { markets, articles } from "@/lib/db/schema";
+import { markets, articles, quicknodeStreams } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  // Check QuickNode Streams for recent Hyperliquid Events
+  const recentStreams = await db
+    .select()
+    .from(quicknodeStreams)
+    .orderBy(desc(quicknodeStreams.recordedAt))
+    .limit(3);
+
+  const streamTickerItems = recentStreams.map((stream, i) => {
+    // Basic extraction from our QuickNode payload for demo
+    const p = stream.payload as any;
+    const coin = p.coin || p.data?.coin || "Crypto";
+    const volume = p.volume || p.data?.volume || "Spike";
+    const title = `[QUICKNODE STREAM] HYPERLIQUID: ${coin} Volume ${volume}`;
+    return {
+      id: `stream-${stream.id}`,
+      title,
+      probability: "LIVE",
+      volume24h: "0",
+      category: "crypto",
+      slug: null, // Just a normal un-clickable breaking ticker alert
+    };
+  });
+
   const withChange = await db
     .select({
       id: markets.id,
@@ -23,7 +46,7 @@ export async function GET() {
     .limit(50);
 
   const seen = new Set<string>();
-  const ticker = withChange
+  const dbTicker = withChange
     .filter((m) => {
       if (seen.has(m.id)) return false;
       seen.add(m.id);
@@ -37,6 +60,9 @@ export async function GET() {
       category: m.category,
       slug: m.articleSlug ?? m.id,
     }));
+
+  // Mix Stream items with DB items
+  const ticker = [...streamTickerItems, ...dbTicker];
 
   return NextResponse.json(ticker);
 }

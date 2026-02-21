@@ -6,6 +6,7 @@ import { articles, markets } from "@/lib/db/schema";
 import { eq, desc, ne } from "drizzle-orm";
 import { Masthead } from "@/components/Masthead";
 import { SectionNav } from "@/components/SectionNav";
+import { UniswapSwapWidget } from "@/components/UniswapSwapWidget";
 
 import Image from "next/image";
 
@@ -154,6 +155,7 @@ export default async function ArticlePage({
             <div className="mt-8 p-3 border border-[var(--color-rule)] text-[10px] uppercase tracking-wider text-[var(--color-ink-light)] font-[family-name:var(--font-ui)]">
               AI-Generated Article · Based on prediction market data from Polymarket and Kalshi. Not financial advice.
             </div>
+            <UniswapSwapWidget />
           </div>
 
           <aside className="lg:col-span-1">

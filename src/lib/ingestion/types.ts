@@ -20,6 +20,10 @@ export interface PolymarketEvent {
   liquidity?: number;
   outcomes?: string;
   outcomePrices?: string;
+  markets?: Array<{
+    outcomes: string;
+    outcomePrices: string;
+  }>;
   tags?: Array<{ slug: string; label: string }>;
   [key: string]: unknown;
 }
@@ -29,11 +33,13 @@ export interface KalshiMarket {
   event_ticker?: string;
   title: string;
   subtitle?: string;
+  category?: string;
   yes_ask?: number;
   yes_bid?: number;
   no_ask?: number;
   no_bid?: number;
   volume?: number;
+  volume_24h?: number;
   open_time?: string;
   close_time?: string;
   status?: string;

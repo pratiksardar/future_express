@@ -118,6 +118,15 @@ export const editionArticles = pgTable("edition_articles", {
   position: integer("position").notNull(),
 });
 
+export const quicknodeStreams = pgTable("quicknode_streams", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  streamId: varchar("stream_id", { length: 255 }),
+  network: varchar("network", { length: 255 }),
+  dataset: varchar("dataset", { length: 255 }),
+  payload: jsonb("payload").notNull(),
+  recordedAt: timestamp("recorded_at").defaultNow().notNull(),
+});
+
 export type Market = typeof markets.$inferSelect;
 export type NewMarket = typeof markets.$inferInsert;
 export type ProbabilitySnapshot = typeof probabilitySnapshots.$inferSelect;
@@ -125,3 +134,4 @@ export type Article = typeof articles.$inferSelect;
 export type NewArticle = typeof articles.$inferInsert;
 export type Edition = typeof editions.$inferSelect;
 export type EditionArticle = typeof editionArticles.$inferSelect;
+export type QuicknodeStream = typeof quicknodeStreams.$inferSelect;

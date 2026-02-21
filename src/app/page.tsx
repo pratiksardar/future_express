@@ -103,7 +103,10 @@ export default async function HomePage() {
 
   return (
     <div className="paper-texture min-h-screen">
-      <Masthead latestEdition={mastheadEditionLabel} />
+      <Masthead
+        latestEdition={mastheadEditionLabel}
+        volumeNumber={latestEdition?.volumeNumber}
+      />
       <BreakingTicker />
       <SectionNav />
 

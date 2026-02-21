@@ -40,11 +40,53 @@ export async function fetchPolymarketEvents(limit = 100): Promise<PolymarketEven
 
 export function parsePolymarketProbability(event: PolymarketEvent): number | null {
   try {
-    const prices = event.outcomePrices ?? event.outcomes;
-    if (typeof prices === "string") {
-      const arr = JSON.parse(prices) as string[];
-      const yes = arr?.[0];
-      if (yes != null) return Math.round(parseFloat(yes) * 100);
+    let bestProb = 0;
+
+    // Some Polymarket events group multiple sub-markets (e.g., various candidates).
+    // We want the most likely "Yes" outcome across all active sub-markets to represent the headline.
+    const subMarkets = event.markets && event.markets.length > 0 ? event.markets : [event as any];
+
+    let foundValid = false;
+
+    for (const market of subMarkets) {
+      if (market.closed) continue;
+
+      const pricesStr = market.outcomePrices ?? event.outcomePrices;
+      const outcomesStr = market.outcomes ?? event.outcomes;
+
+      if (pricesStr && outcomesStr) {
+        let pricesArr: string[], outcomesArr: string[];
+        try {
+          pricesArr = JSON.parse(pricesStr);
+          outcomesArr = JSON.parse(outcomesStr);
+        } catch {
+          continue;
+        }
+
+        const yesIndex = outcomesArr.findIndex(
+          (o) => typeof o === "string" && o.toLowerCase() === "yes"
+        );
+
+        if (yesIndex !== -1 && pricesArr[yesIndex]) {
+          const yesProb = parseFloat(pricesArr[yesIndex]);
+          if (!isNaN(yesProb) && yesProb > bestProb) {
+            bestProb = yesProb;
+            foundValid = true;
+          }
+        } else {
+          for (const p of pricesArr) {
+            const prob = parseFloat(p);
+            if (!isNaN(prob) && prob > bestProb) {
+              bestProb = prob;
+              foundValid = true;
+            }
+          }
+        }
+      }
+    }
+
+    if (foundValid) {
+      return Math.round(bestProb * 100);
     }
   } catch {
     // ignore

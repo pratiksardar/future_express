@@ -1,12 +1,14 @@
-/** Number of top trending (by volume) markets to generate articles for in the newspaper feed. */
+/** Number of articles to take from EACH source (Polymarket + Kalshi). */
 export const TOP_TRENDING_ARTICLE_COUNT = 15;
 
 import { db } from "@/lib/db";
 import { articles, markets, editions, editionArticles } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { searchWeb } from "./research";
 import { buildArticlePrompt } from "./prompts";
 import { getArticleLLM, generateArticleImage } from "./llm";
+import { get0GAIResponse } from "@/lib/zeroG/client";
+import { matchScore } from "@/lib/ingestion/normalize";
 
 /** Extract JSON from model output (handles optional markdown code blocks). */
 function extractJson(raw: string): string {
@@ -76,14 +78,17 @@ export async function generateArticleForMarket(
   const { client, model, supportsJsonMode } = getArticleLLM();
 
   try {
-    const completion = await client.chat.completions.create({
-      model,
-      messages: [{ role: "user", content: prompt }],
-      ...(supportsJsonMode && { response_format: { type: "json_object" } as const }),
-      temperature: 0.6,
-    });
-    let raw = completion.choices[0]?.message?.content ?? "{}";
-    if (!supportsJsonMode) raw = extractJson(raw);
+    // Decentralized AI Inference via 0G Compute Network
+    let raw = "{}";
+    let modelUsed = "0G Compute (llama-3.3)";
+    try {
+      raw = await get0GAIResponse(prompt, "You are a professional journalist. You must output strictly valid JSON matching the requested schema.");
+    } catch (err) {
+      console.error(err);
+    }
+
+    // We always parse JSON out in case the decentralized inference added markdown ticks
+    raw = extractJson(raw);
     let parsed: { headline?: string; subheadline?: string; body?: string; contrarianTake?: string };
     try {
       parsed = JSON.parse(raw) as typeof parsed;
@@ -126,7 +131,7 @@ export async function generateArticleForMarket(
         imageUrl,
         probabilityAtPublish: market.currentProbability,
         sources: researchResults.length ? researchResults.map((r) => ({ title: r.title, url: r.url })) : null,
-        llmModel: completion.model,
+        llmModel: modelUsed,
         publishedAt: new Date(),
       })
       .returning({ id: articles.id });
@@ -154,6 +159,7 @@ export async function generateArticleForMarket(
 }
 
 import { buildEditorPersonaPrompt } from "./prompts";
+import { getAgentBalance, submitAgentTransactionWithBuilderCode } from "@/lib/cdp/client";
 
 /** Creates a new edition and generates short articles for top markets by volume. Runs every 4h. */
 export async function runEditionPipeline(limit = 30): Promise<{
@@ -163,6 +169,19 @@ export async function runEditionPipeline(limit = 30): Promise<{
   failed: number;
   errors: string[];
 }> {
+  // Base Mainnet: Self-Sustaining Protocol Solvency Check
+  const balanceCheck = await getAgentBalance();
+  if (!balanceCheck.solvent) {
+    console.error("[Autonomous Agent] HALTED: The Editor Agent ran out of Base Mainnet funds and is insolvent. Refusing to generate a new edition until funded via ERC-8021.");
+    return {
+      editionId: "",
+      volumeNumber: null,
+      generated: 0,
+      failed: 1,
+      errors: ["Agent Insolvent. Awaiting Base Network user funding to resume computing."]
+    };
+  }
+
   const now = new Date();
   const dateStr = now.toISOString().slice(0, 10);
   const hourSlot = Math.floor(now.getUTCHours() / 4) * 4;
@@ -186,12 +205,39 @@ export async function runEditionPipeline(limit = 30): Promise<{
   if (!editionId)
     return { editionId: "", volumeNumber: null, generated: 0, failed: 0, errors: ["Failed to create edition"] };
 
-  const topMarkets = await db
+  // ── Balanced market selection: 15 from Polymarket, 15 from Kalshi ──
+  // Polymarket-sourced markets have polymarketId set
+  const polyMarkets = await db
     .select()
     .from(markets)
-    .where(eq(markets.status, "active"))
+    .where(and(eq(markets.status, "active"), isNotNull(markets.polymarketId)))
     .orderBy(desc(markets.volume24h))
-    .limit(TOP_TRENDING_ARTICLE_COUNT); // Limit to the exact number of articles we will create
+    .limit(TOP_TRENDING_ARTICLE_COUNT);
+
+  // Kalshi-sourced markets have kalshiTicker set (exclude already-merged ones that have polymarketId too)
+  const kalshiMarkets = await db
+    .select()
+    .from(markets)
+    .where(and(eq(markets.status, "active"), isNotNull(markets.kalshiTicker), isNull(markets.polymarketId)))
+    .orderBy(desc(markets.volume24h))
+    .limit(TOP_TRENDING_ARTICLE_COUNT);
+
+  // Dedup: if a Kalshi market title is very similar to a Polymarket one, skip it (it's the same question)
+  const DEDUP_THRESHOLD = 0.70;
+  const dedupedKalshi = kalshiMarkets.filter(k => {
+    for (const p of polyMarkets) {
+      if (matchScore(p.title, k.title) >= DEDUP_THRESHOLD) {
+        console.log(`[Dedup] Skipping Kalshi "${k.title}" — matches Polymarket "${p.title}"`);
+        return false;
+      }
+    }
+    return true;
+  });
+
+  // Combine: Polymarket first, then unique Kalshi markets
+  const topMarkets = [...polyMarkets, ...dedupedKalshi];
+  console.log(`[Edition] Selected ${polyMarkets.length} Polymarket + ${dedupedKalshi.length} Kalshi (${kalshiMarkets.length - dedupedKalshi.length} dupes removed) = ${topMarkets.length} total markets`);
+
 
   const errors: string[] = [];
   let generated = 0;
@@ -226,7 +272,17 @@ export async function runEditionPipeline(limit = 30): Promise<{
   // Iterate based on the layout if possible, otherwise fallback to topMarkets order
   const orderedMarkets = layoutDecisions.length > 0
     ? layoutDecisions.map(d => ({ market: topMarkets.find(m => m.id === d.marketId), decision: d })).filter(x => x.market)
-    : topMarkets.map((m, i) => ({ market: m, decision: { marketId: m.id, position: i + 1, requiresImage: i < 5, newsAngle: "" } }));
+    : topMarkets.map((m, i) => ({ market: m, decision: { marketId: m.id, position: i + 1, requiresImage: i < 5, newsAngle: "" } })); // Defaults to 5 images if LLM fails
+
+  // Hedera Consensus Service: Log editorial layout for agentic transparency
+  if (orderedMarkets.length > 0) {
+    try {
+      const { logEditorialDecision } = await import("@/lib/hedera/client");
+      await logEditorialDecision(editionId, orderedMarkets.map(m => m.decision));
+    } catch (err) {
+      console.error("Hedera integration not imported or failed:", err);
+    }
+  }
 
   for (const { market, decision } of orderedMarkets) {
     if (!market) continue;
@@ -248,6 +304,22 @@ export async function runEditionPipeline(limit = 30): Promise<{
       failed++;
       if (result.error) errors.push(`${market.title}: ${result.error}`);
     }
+  }
+
+  // Post-Edition: Autonomous Sub-wallet 8021 tracking execution payment
+  // This physically transacts on Base Mainnet to pay "Publishing Royalties" / overhead
+  // using the 8021 tracker format exactly as specified by the bounty
+  try {
+    if (generated > 0) {
+      console.log("[Agent] Publishing complete. Issuing Base Mainnet royalty tx with ERC-8021...");
+      await submitAgentTransactionWithBuilderCode(
+        "0x0000000000000000000000000000000000000000",
+        "0", // 0 value for demo unless we actually want to spend
+        "x402:metadata-overhead-fee"
+      );
+    }
+  } catch (err) {
+    console.warn("Could not log 8021 tx", err);
   }
 
   return { editionId, volumeNumber: edition?.volumeNumber ?? nextVolume, generated, failed, errors };
