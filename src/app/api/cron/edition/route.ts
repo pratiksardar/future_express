@@ -17,7 +17,7 @@ export const maxDuration = 300;
  * POST to trigger manually.
  * Ensure OPENAI_API_KEY or OPENROUTER_API_KEY is set for article generation.
  */
-export async function POST(req: Request) {
+export async function GET(req: Request) {
   try {
     const walletCheck = await checkEditorWalletBalance();
     if (walletCheck && !walletCheck.ok) {
@@ -66,4 +66,8 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
+}
+
+export async function POST(req: Request) {
+  return GET(req);
 }
