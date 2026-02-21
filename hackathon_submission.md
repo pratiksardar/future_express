@@ -40,16 +40,70 @@ At the core of The Future Express is a fully autonomous "AI Editor" pipeline. He
 Most AI projects right now are just dressed-up chatbots. We built The Future Express to push the boundaries of what an autonomous entity can actually be. It's not just generating text; it's a full-stack media company run by an AI Editor that ingests real-time financial data, synthesizes complex narratives, manages its own bank account, and hires other agents to do design work. It's a glimpse into the future of autonomous, agent-to-agent economies.
 
 ### Base: Base Self-Sustaining Autonomous Agents
-We wanted to solve the "homeless agent" problem by giving our AI Editor a real, on-chain business identity. Using the Coinbase Developer Platform (CDP) AgentKit, we provisioned an MPC wallet securely on the backend for the agent on Base Mainnet. The agent natively holds $USDC on Base, and uses it to automatically fund its own operations—specifically, paying decoupled AI artists for cover photos. Users can also natively tip the AI Editor via its Base address to help it remain completely self-sustaining over time.
+We solved the "homeless agent" problem by giving our AI Editor a real, on-chain business identity. Using the Coinbase Developer Platform (CDP), we provisioned an MPC wallet securely on the backend for the agent on Base. The agent natively holds $USDC on Base, and uses it to automatically fund its own operations. In addition to being self-sustaining, we natively implemented **ERC-8021 Builder Code tracking** so the network can attribute the agent's economic activity:
+
+```typescript
+// Attaching ERC-8021 builder codes natively to autonomous Base transactions
+const ERC8021_BUILDER_CODE = "8021:future-express-agent";
+const payload = `${textData}::${ERC8021_BUILDER_CODE}`;
+const hexData = ethers.hexlify(ethers.toUtf8Bytes(payload));
+
+const tx = await wallet.sendTransaction({
+    to: DECENTRALIZED_SERVICE_ADDRESS,
+    value: ethers.parseEther(value),
+    data: hexData
+});
+```
 
 ### Kite AI: Agent-Native Payments & Identity (x402-Powered)
-When our AI Editor drafts an article, it needs a cover image, but we didn't want to just use a standard, human-paid API key. Instead, the Editor acts autonomously. We integrated Kite AI’s x402 payment flow so the Editor can securely authenticate itself and instantly stream micro-payments to a decentralized AI image-generator. Every API request corresponds to a real agent-to-agent transaction on the Kite network, proving out a developer-friendly, trustless service economy where agents hire and pay each other without human intervention.
+When our AI Editor drafts an article, it needs a cover image, but we didn't want to just use a standard, human-paid API key. We integrated Kite AI’s **x402 payment flow** so the Editor can securely authenticate itself and instantly stream micro-payments to a decentralized AI image-generator. Every API request corresponds to a real agent-to-agent transaction on the Kite network, proving out a developer-friendly, trustless service economy.
+
+```typescript
+// Autonomous agent-to-agent negotiation and x402 payment
+const tx = await wallet.sendTransaction({
+    to: PHOTOGRAPHER_AGENT_ADDRESS,
+    value: ethers.parseEther("0.0001"), // 0.0001 KITE micropayment
+    data: ethers.hexlify(ethers.toUtf8Bytes(JSON.stringify({
+        type: "x402_payment",
+        service: "image_generation",
+        client: "the_editor",
+        provider: "the_photographer"
+    })))
+});
+await tx.wait(1); // Payment Confirmed! Photographer API unlocked.
+```
 
 ### 0g Labs: Best Use of AI Inference or Fine Tuning (0G Compute)
-Synthesizing 30+ highly volatile prediction markets into a cohesive, vintage 1880s narrative requires some heavy lifting. We leveraged 0G Compute's decentralized inferencing infrastructure to handle these massive, complex context windows. Rather than just making a simple API call, our ingestion pipeline organizes the raw Kalshi and Polymarket JSONs, aggressively deduplicates overlapping odds natively, and feeds the structured data into 0G for inference. This allows the LLM to generate deep, multi-market reasoning in real-time.
+Synthesizing 30+ highly volatile prediction markets into a cohesive, vintage 1880s narrative requires massive compute overhead. We leveraged **0G Compute's** decentralized inferencing infrastructure to handle these complex, large-token context windows. Rather than just making a simple API call, our ingestion pipeline organizes the raw Kalshi and Polymarket JSONs, aggressively deduplicates overlapping odds natively, and feeds the structured data into 0G for inference. This allows the LLM to generate deep, multi-market reasoning in real-time without latency bottlenecks.
 
 ### Uniswap Foundation: Integrate the Uniswap API
-We didn’t want readers to just passively consume the news—we wanted to close the loop so they could take action on the odds they were reading about. We used the developer platform to directly embed the Uniswap API and swap widgets into the bottom of every generated article. If the AI Editor makes a compelling case about a specific market trend, readers can instantly swap tokens or fund their wallets right on the page, significantly reducing the friction to go place their own bets.
+We didn’t want readers to just passively consume the news—we wanted to close the loop so they could take action on the odds they were reading about. We used the **Uniswap Foundation API** to directly embed swap widgets into the bottom of every generated article. If the AI Editor makes a compelling case about a specific market trend, readers can instantly swap tokens or fund their wallets right on the page, significantly reducing the friction to go place their own bets.
+
+```typescript
+// Seamless in-article routing securely invoking the Uniswap API
+const res = await fetch("/api/uniswap/quote", {
+   method: "POST",
+   headers: { "Content-Type": "application/json" },
+   body: JSON.stringify({ amount: amountWei, swapper: address }),
+});
+const data = await res.json();
+// Render dynamic swap widget based on optimal route
+```
 
 ### Hedera: “No Solidity Allowed” - Hedera SDKs Only
-Because prediction markets fluctuate by the second, we needed a way to prove *exactly* what the odds were when the AI wrote the article. Instead of deploying a complex EVM smart contract, we went entirely native. We integrated the Hedera Consensus Service (HCS) SDK directly into our TypeScript backend. As soon as an edition is finalized, an Archival Agent hashes the generated article along with the exact market probabilities and logs it to an HCS topic. It's an immutable, verifiable audit trail of AI journalism, built with zero Solidity.
+Because prediction markets fluctuate by the second, we needed a way to prove *exactly* what the odds were when the AI wrote the article. Instead of deploying an unnecessary EVM smart contract, we went entirely native. We integrated the **Hedera Consensus Service (HCS) SDK** directly into our TypeScript backend. As soon as an edition is finalized, an Archival Agent hashes the generated article along with the exact market probabilities and logs it to an HCS topic. It's an immutable, verifiable audit trail of AI journalism, built natively with **zero Solidity**.
+
+```typescript
+import { TopicMessageSubmitTransaction } from "@hashgraph/sdk";
+
+// Completely native Typescript SDK implementation, NO solidity required.
+const submitTx = await new TopicMessageSubmitTransaction({
+    topicId: defaultTopicId,
+    message: JSON.stringify({ 
+        event: "EDITORIAL_LAYOUT_DECISION", 
+        editionId, 
+        timestamp: new Date().toISOString(),
+        decisions: marketOddsAtTimeOfPublish
+    })
+}).execute(client);
+```
