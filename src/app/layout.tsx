@@ -9,6 +9,8 @@ import {
 import "./globals.css";
 import { EditionProvider } from "@/components/EditionProvider";
 
+import { Analytics } from "@vercel/analytics/react";
+
 const playfair = Playfair_Display({
   variable: "--font-playfair",
   subsets: ["latin"],
@@ -57,6 +59,7 @@ export default function RootLayout({
     >
       <body className="antialiased" style={{ fontFamily: "var(--font-body)" }}>
         <EditionProvider>{children}</EditionProvider>
+        <Analytics />
       </body>
     </html>
   );
