@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "generate-news:local": "npx tsx --env-file=.env scripts/run-edition.ts",
+    "generate-news:neon": "npx tsx --env-file=.env.vercel scripts/run-edition.ts"
   },
   "dependencies": {
     "@0glabs/0g-serving-broker": "^0.7.1",
