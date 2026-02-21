@@ -1,0 +1,48 @@
+# WhatsApp Promo Messages for The Future Express
+
+Below are a few options for sharing your project on WhatsApp. They are formatted using WhatsApp's native markdown (`*bold*`, `_italic_`, `~strikethrough~`).
+
+***
+
+### Option 1: For Casual/Friends Groups (Excited & Direct)
+_Use this for general friend groups to get quick clicks and support._
+
+Hey guys! 👋 I just published my project for ETHDenver 2026 and I’d love for you to check it out! 
+
+It's called *The Future Express* 🚂🗞️—it’s an 1880s vintage newspaper, but the articles are entirely written by an autonomous AI agent analyzing live crypto prediction markets. 🤖📈
+
+The AI even has its own crypto wallet, pays other AIs for the artwork, and runs the whole site by itself! 🤯
+
+Take a read here (it looks super cool on mobile!):
+🔗 https://future-express.vercel.app/
+
+If you like it, just clicking around helps me a ton with my judging metrics for the hackathon! Thank you!! 🙏🔥
+
+***
+
+### Option 2: For Crypto/Dev/Web3 Groups (Technical & Impressive)
+_Use this for developer or crypto-native groups where they will appreciate the tech stack._
+
+Hey everyone! Just shipped my ETHDenver submission: *The Future Express* 🗞️🔮
+
+It’s an entirely autonomous, self-sustaining AI Newsroom. Instead of human editors, an agent ingests live Kalshi & Polymarket odds, uses 0G decentralized inferencing to write the articles, and securely pays for cover art using x402 micropayments on Kite AI from its own CDP AgentKit MPC wallet. 
+
+It’s completely styled like an 1880s broadsheet but runs on a bleeding-edge agentic stack (Base, Hedera, QuickNode, Uniswap, Kite AI). 🔥
+
+Would mean the world if you could click through and test it out to help me build some traffic for the demo! 
+🔗 https://future-express.vercel.app/
+
+(P.S. You can actually tip the AI editor directly on the site via its Base wallet! 💸)
+
+***
+
+### Option 3: Short & Punchy (For busy groups)
+_Use this when you just want a fast click without a wall of text._
+
+🚨 *Hackathon Project Live!* 🚨
+I built a vintage 1880s newspaper that is 100% run by an AI agent trading and reporting on live prediction markets. The AI even has its own wallet to fund itself! 🤖🗞️
+
+Check out what happens when AI predicts the future:
+🔗 https://future-express.vercel.app/
+
+Would really appreciate a click to boost our analytics before judging! Thanks! 🙌
