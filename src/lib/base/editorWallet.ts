@@ -23,8 +23,29 @@ export type EditorWalletCheck = {
  * Returns ok: false when balance is below min or env is not configured.
  */
 export async function checkEditorWalletBalance(): Promise<EditorWalletCheck | null> {
-  const address = process.env.EDITOR_WALLET_ADDRESS?.trim();
+  let address = process.env.EDITOR_WALLET_ADDRESS?.trim();
   if (!address) return null;
+
+  // Resolve ENS or Basenames (.base.eth) using a public Ethereum mainnet RPC
+  if (address.endsWith(".eth")) {
+    try {
+      const mainnetProvider = new ethers.JsonRpcProvider("https://eth.llamarpc.com");
+      const resolved = await mainnetProvider.resolveName(address);
+      if (!resolved) {
+        throw new Error(`Could not resolve ENS name: ${address}`);
+      }
+      address = resolved;
+    } catch (e) {
+      console.error(`Failed to resolve ENS name ${address}:`, e);
+      return {
+        ok: false,
+        address,
+        balanceWei: BigInt(0),
+        minRequiredWei: DEFAULT_MIN_BALANCE_WEI,
+        message: `Failed to resolve ENS name ${address}`,
+      };
+    }
+  }
 
   const minStr = process.env.MIN_EDITOR_BALANCE_ETH;
   const minRequiredWei =
