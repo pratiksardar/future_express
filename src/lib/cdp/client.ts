@@ -19,7 +19,7 @@ function getBaseMainnetProvider() {
 }
 
 function getAgentWallet(): ethers.Wallet {
-    const pk = process.env.BASE_SEPOLIA_PRIVATE_KEY;
+    const pk = process.env.BASE_SEPOLIA_PRIVATE_KEY?.trim();
     if (!pk) throw new Error("BASE_SEPOLIA_PRIVATE_KEY is missing");
     return new ethers.Wallet(pk, getBaseMainnetProvider());
 }

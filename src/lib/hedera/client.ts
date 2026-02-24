@@ -6,8 +6,8 @@ let defaultTopicId: string | null = null;
 function getClient(): Client {
     if (hederaClient) return hederaClient;
 
-    const accountIdStr = process.env.HEDERA_ACCOUNT_ID;
-    const privateKeyStr = process.env.HEDERA_PRIVATE_KEY;
+    const accountIdStr = process.env.HEDERA_ACCOUNT_ID?.trim();
+    const privateKeyStr = process.env.HEDERA_PRIVATE_KEY?.trim();
 
     if (!accountIdStr || !privateKeyStr) {
         throw new Error("Missing HEDERA_ACCOUNT_ID or HEDERA_PRIVATE_KEY");

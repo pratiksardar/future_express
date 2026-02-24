@@ -8,7 +8,7 @@ const PHOTOGRAPHER_AGENT_ADDRESS = "0x4b2a941929E39Adbea5316dDF2B9Bd8Ff3134389";
  * This proves agent-to-agent identity and payment frameworks
  */
 export async function authorizeX402PaymentForImage(prompt: string): Promise<string | null> {
-    const pk = process.env.BASE_SEPOLIA_PRIVATE_KEY;
+    const pk = process.env.BASE_SEPOLIA_PRIVATE_KEY?.trim();
     if (!pk) return null;
 
     try {

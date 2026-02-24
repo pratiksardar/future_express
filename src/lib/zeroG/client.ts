@@ -8,7 +8,7 @@ const OFFICIAL_PROVIDERS = {
 };
 
 export async function get0GAIResponse(prompt: string, systemPrompt?: string): Promise<string> {
-    const privateKey = process.env.BASE_SEPOLIA_PRIVATE_KEY;
+    const privateKey = process.env.BASE_SEPOLIA_PRIVATE_KEY?.trim();
     if (!privateKey) {
         throw new Error('BASE_SEPOLIA_PRIVATE_KEY is required for 0G Compute');
     }
