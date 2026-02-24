@@ -78,7 +78,7 @@ export async function get0GAIResponse(prompt: string, systemPrompt?: string): Pr
 
         const completion = await fallbackOpenAI.chat.completions.create({
             messages: fallbackMessages,
-            model: process.env.OPENROUTER_API_KEY ? "openai/gpt-4o-mini" : "gpt-4o-mini",
+            model: process.env.OPENROUTER_API_KEY ? "arcee-ai/trinity-large-preview:free" : "gpt-4o-mini",
         });
 
         return completion.choices[0].message.content || "";

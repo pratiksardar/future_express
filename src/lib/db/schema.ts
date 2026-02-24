@@ -82,7 +82,7 @@ export const articles = pgTable("articles", {
   contrarianTake: text("contrarian_take"),
   category: categoryEnum("category").notNull(),
   slug: varchar("slug", { length: 512 }).notNull().unique(),
-  imageUrl: varchar("image_url", { length: 2048 }),
+  imageUrl: text("image_url"),
   probabilityAtPublish: decimal("probability_at_publish", {
     precision: 5,
     scale: 2,
