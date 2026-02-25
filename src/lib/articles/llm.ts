@@ -46,18 +46,72 @@ export function getArticleLLM(): {
   };
 }
 
+/** Context passed to the image generator for richer, article-relevant images. */
+export type ImageContext = {
+  headline: string;
+  subheadline?: string | null;
+  bodyExcerpt?: string;
+  category?: string;
+};
+
 /**
- * Generates an image based on the prompt. Uses the configured IMAGE_MODEL from OpenRouter.
+ * Builds a rich, context-aware image prompt from article data.
+ * The goal is to produce an image that is immediately recognisable as
+ * belonging to *this specific article*, not just a generic newspaper graphic.
  */
-export async function generateArticleImage(prompt: string, marketId: string): Promise<string | null> {
+function buildImagePrompt(ctx: ImageContext): string {
+  const categoryHints: Record<string, string> = {
+    politics: "government buildings, politicians at podiums, congressional halls, ballot boxes, political rallies",
+    economy: "stock tickers, Wall Street, currency notes, trading floors, financial charts, gold bars",
+    crypto: "blockchain networks, digital coins, futuristic circuits, crypto exchange screens, Bitcoin symbols",
+    sports: "athletes in action, stadiums, crowds cheering, sports equipment, trophies, scoreboards",
+    science: "laboratories, scientists, space imagery, microscopes, DNA helices, telescopes",
+    entertainment: "movie cameras, red carpets, stage lights, concert halls, award ceremonies",
+    world: "globe, world maps, international landmarks, flags, diplomats shaking hands",
+  };
+
+  const visualHint = ctx.category ? categoryHints[ctx.category] ?? "" : "";
+
+  // Take the first ~80 words of the body to give the model concrete story details
+  const bodySnippet = ctx.bodyExcerpt
+    ? ctx.bodyExcerpt.split(/\s+/).slice(0, 80).join(" ")
+    : "";
+
+  return [
+    `Create a dramatic, cinematic editorial photograph for a premium newspaper article.`,
+    ``,
+    `HEADLINE: "${ctx.headline}"`,
+    ctx.subheadline ? `SUBHEADLINE: "${ctx.subheadline}"` : "",
+    bodySnippet ? `STORY CONTEXT: ${bodySnippet}` : "",
+    ``,
+    `VISUAL DIRECTION:`,
+    `- The image must directly depict the specific subject matter of this headline — show the actual people, places, or objects referenced.`,
+    visualHint ? `- Include visual elements such as: ${visualHint}.` : "",
+    `- Style: vintage 1930s broadsheet newspaper editorial illustration or high-contrast black-and-white photograph.`,
+    `- Mood: dramatic lighting, strong shadows, photojournalistic composition.`,
+    `- NO text, NO watermarks, NO logos, NO captions within the image.`,
+    `- Aspect ratio: landscape (16:9).`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+/**
+ * Generates an image for an article. Uses the configured IMAGE_MODEL from OpenRouter.
+ * Accepts rich article context so the generated image is visually tied to the story.
+ */
+export async function generateArticleImage(
+  ctx: ImageContext,
+  marketId: string
+): Promise<string | null> {
   const openRouterKey = process.env.OPENROUTER_API_KEY;
 
   try {
     // Kite AI: Autonomous Agent Payment (Editor pays Photographer via KITE test token)
     // This is an x402-style micro-payment
-    await authorizeX402PaymentForImage(prompt);
+    await authorizeX402PaymentForImage(ctx.headline);
 
-    const styledPrompt = `A vintage, retro 1930s-style newspaper editorial illustration or black-and-white photo for an article about: ${prompt}. It should look like it belongs in a classic 1930s broadsheet newspaper.`;
+    const styledPrompt = buildImagePrompt(ctx);
 
     if (openRouterKey) {
       // Use OpenRouter Image API
@@ -96,11 +150,10 @@ export async function generateArticleImage(prompt: string, marketId: string): Pr
       }
     }
 
-    // Fallback to picsum photos if no key or openrouter failed
-    const seed = Math.floor(Math.random() * 1000000);
-    const url = `https://picsum.photos/seed/${seed}/800/500?grayscale`;
+    // Fallback: Pollinations AI — free, no-auth image generation with the same rich prompt
+    const pollinationsPrompt = encodeURIComponent(buildImagePrompt(ctx));
+    const url = `https://image.pollinations.ai/prompt/${pollinationsPrompt}?width=800&height=500&nologo=true`;
 
-    // Return external URL directly to support Vercel Serverless (no local fs writes)
     return url;
   } catch (e) {
     console.error("Image gen error", e);

@@ -127,6 +127,38 @@ export const quicknodeStreams = pgTable("quicknode_streams", {
   recordedAt: timestamp("recorded_at").defaultNow().notNull(),
 });
 
+export const apiKeyTierEnum = pgEnum("api_key_tier", [
+  "free",
+  "developer",
+  "business",
+]);
+export const paymentMethodEnum = pgEnum("payment_method", [
+  "api_key",
+  "x402",
+]);
+
+export const apiKeys = pgTable("api_keys", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  keyHash: varchar("key_hash", { length: 128 }).notNull().unique(),
+  name: varchar("name", { length: 255 }),
+  tier: apiKeyTierEnum("tier").notNull().default("free"),
+  ownerAddress: varchar("owner_address", { length: 42 }),
+  callsToday: integer("calls_today").notNull().default(0),
+  dailyLimit: integer("daily_limit").notNull().default(50),
+  lastResetDate: date("last_reset_date"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastUsedAt: timestamp("last_used_at"),
+});
+
+export const apiUsageLog = pgTable("api_usage_log", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  apiKeyId: uuid("api_key_id").references(() => apiKeys.id),
+  endpoint: varchar("endpoint", { length: 255 }),
+  paymentMethod: paymentMethodEnum("payment_method").notNull(),
+  txHash: varchar("tx_hash", { length: 66 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export type Market = typeof markets.$inferSelect;
 export type NewMarket = typeof markets.$inferInsert;
 export type ProbabilitySnapshot = typeof probabilitySnapshots.$inferSelect;
@@ -135,3 +167,5 @@ export type NewArticle = typeof articles.$inferInsert;
 export type Edition = typeof editions.$inferSelect;
 export type EditionArticle = typeof editionArticles.$inferSelect;
 export type QuicknodeStream = typeof quicknodeStreams.$inferSelect;
+export type ApiKey = typeof apiKeys.$inferSelect;
+export type ApiUsageLogEntry = typeof apiUsageLog.$inferSelect;

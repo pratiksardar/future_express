@@ -114,7 +114,12 @@ export async function generateArticleForMarket(
 
     let imageUrl = null;
     if (requiresImage) {
-      imageUrl = await generateArticleImage(headline, market.id);
+      imageUrl = await generateArticleImage({
+        headline,
+        subheadline: parsed.subheadline ?? null,
+        bodyExcerpt: body,
+        category: market.category,
+      }, market.id);
     }
 
     const [inserted] = await db

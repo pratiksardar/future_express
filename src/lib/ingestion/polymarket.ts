@@ -15,7 +15,7 @@ export async function fetchPolymarketEvents(limit = 100): Promise<PolymarketEven
 
   const res = await fetch(url.toString(), {
     headers: { Accept: "application/json" },
-    next: { revalidate: 300 },
+    cache: "no-store",
   });
 
   if (!res.ok) {
