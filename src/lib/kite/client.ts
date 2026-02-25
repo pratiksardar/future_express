@@ -1,23 +1,23 @@
 import { ethers } from "ethers";
+import { PHOTOGRAPHER_AGENT_ADDRESS, RPC, config } from "@/lib/config";
+import { loggers } from "@/lib/logger";
 
-// Simulate the Photographer Agent API's wallet address on Kite AI Testnet
-const PHOTOGRAPHER_AGENT_ADDRESS = "0x4b2a941929E39Adbea5316dDF2B9Bd8Ff3134389";
 
 /**
  * Executes an x402-style micro-payment on the Kite AI Testnet
  * This proves agent-to-agent identity and payment frameworks
  */
 export async function authorizeX402PaymentForImage(prompt: string): Promise<string | null> {
-    const pk = process.env.BASE_SEPOLIA_PRIVATE_KEY?.trim();
+    const pk = config.BASE_SEPOLIA_PRIVATE_KEY?.trim();
     if (!pk) return null;
 
     try {
-        const provider = new ethers.JsonRpcProvider("https://rpc-testnet.gokite.ai/");
+        const provider = new ethers.JsonRpcProvider(RPC.KITE_TESTNET);
         const wallet = new ethers.Wallet(pk, provider);
 
-        console.log(`[Kite AI] Initiating x402 Micropayment on Kite Testnet (Chain: 2368)...`);
-        console.log(`[Kite AI] Editor Identity: ${wallet.address}`);
-        console.log(`[Kite AI] Hiring Photographer Identity for Prompt: "${prompt.slice(0, 30)}..."`);
+        loggers.kite.info("Initiating x402 Micropayment on Kite Testnet (Chain: 2368)");
+        loggers.kite.debug({ editor: wallet.address }, "Editor identity");
+        loggers.kite.debug({ prompt: prompt.slice(0, 30) }, "Hiring Photographer for prompt");
 
         // Let's send a fake micropayment of 0.0001 KITE representing the x402 logic
         const tx = await wallet.sendTransaction({
@@ -31,13 +31,13 @@ export async function authorizeX402PaymentForImage(prompt: string): Promise<stri
             })))
         });
 
-        console.log(`[Kite AI] x402 Micropayment Submitted! Tx Hash: ${tx.hash}`);
+        loggers.kite.info({ txHash: tx.hash }, "x402 Micropayment Submitted");
         await tx.wait(1);
-        console.log(`[Kite AI] Payment Confirmed! Photographer API unlocked.`);
+        loggers.kite.info("Payment confirmed — Photographer API unlocked");
 
         return tx.hash;
     } catch (err: any) {
-        console.warn(`[Kite AI Exception] Failed to send x402 payment: ${err.message}`);
+        loggers.kite.warn({ err: err.message }, "Failed to send x402 payment");
         return null; // Don't crash the pipeline if Kite RPC is down
     }
 }

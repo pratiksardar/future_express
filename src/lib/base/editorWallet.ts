@@ -5,9 +5,8 @@
  */
 
 import { ethers } from "ethers";
+import { RPC, config } from "@/lib/config";
 
-const BASE_MAINNET_RPC = "https://mainnet.base.org";
-const BASE_SEPOLIA_RPC = "https://sepolia.base.org";
 const DEFAULT_MIN_BALANCE_WEI = ethers.parseEther("0.001");
 
 export type EditorWalletCheck = {
@@ -23,13 +22,13 @@ export type EditorWalletCheck = {
  * Returns ok: false when balance is below min or env is not configured.
  */
 export async function checkEditorWalletBalance(): Promise<EditorWalletCheck | null> {
-  let address = process.env.EDITOR_WALLET_ADDRESS?.trim();
+  let address = config.EDITOR_WALLET_ADDRESS?.trim();
   if (!address) return null;
 
   // Resolve ENS or Basenames (.base.eth) using a public Ethereum mainnet RPC
   if (address.endsWith(".eth")) {
     try {
-      const mainnetProvider = new ethers.JsonRpcProvider("https://eth.llamarpc.com");
+      const mainnetProvider = new ethers.JsonRpcProvider(RPC.ETH_MAINNET);
       const resolved = await mainnetProvider.resolveName(address);
       if (!resolved) {
         throw new Error(`Could not resolve ENS name: ${address}`);
@@ -47,17 +46,17 @@ export async function checkEditorWalletBalance(): Promise<EditorWalletCheck | nu
     }
   }
 
-  const minStr = process.env.MIN_EDITOR_BALANCE_ETH;
+  const minStr = config.MIN_EDITOR_BALANCE_ETH;
   const minRequiredWei =
     minStr != null && minStr !== ""
       ? ethers.parseEther(minStr)
       : DEFAULT_MIN_BALANCE_WEI;
 
   try {
-    const useSepolia = process.env.USE_BASE_SEPOLIA === "true";
+    const useSepolia = config.USE_BASE_SEPOLIA;
     const rpc =
-      process.env.BASE_RPC_URL ??
-      (useSepolia ? BASE_SEPOLIA_RPC : BASE_MAINNET_RPC);
+      config.BASE_RPC_URL ??
+      (useSepolia ? RPC.BASE_SEPOLIA : RPC.BASE_MAINNET);
     const provider = new ethers.JsonRpcProvider(rpc);
     const balanceWei = await provider.getBalance(address);
     const ok = balanceWei >= minRequiredWei;

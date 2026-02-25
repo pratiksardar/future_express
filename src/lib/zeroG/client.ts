@@ -1,32 +1,29 @@
 import { ethers } from "ethers";
 import { createZGComputeNetworkBroker } from "@0glabs/0g-serving-broker";
 import OpenAI from "openai";
-
-const OFFICIAL_PROVIDERS = {
-    // We'll use Llama 3 for our main text generation
-    "llama-3.3-70b-instruct": "0xa48f01287233509FD694a22Bf840225062E67836",
-};
+import { RPC, ZERO_G_PROVIDERS, config } from "@/lib/config";
+import { loggers } from "@/lib/logger";
 
 export async function get0GAIResponse(prompt: string, systemPrompt?: string): Promise<string> {
-    const privateKey = process.env.BASE_SEPOLIA_PRIVATE_KEY?.trim();
+    const privateKey = config.BASE_SEPOLIA_PRIVATE_KEY?.trim();
     if (!privateKey) {
         throw new Error('BASE_SEPOLIA_PRIVATE_KEY is required for 0G Compute');
     }
 
     try {
         // 0G Newton Testnet RPC
-        const provider = new ethers.JsonRpcProvider("https://evmrpc-testnet.0g.ai");
+        const provider = new ethers.JsonRpcProvider(RPC.ZERO_G_TESTNET);
         const wallet = new ethers.Wallet(privateKey, provider);
 
-        console.log(`[0G] Initializing broker for wallet ${wallet.address}...`);
+        loggers.zeroG.info({ wallet: wallet.address }, "Initializing broker");
         const broker = await createZGComputeNetworkBroker(wallet);
 
-        const providerAddress = OFFICIAL_PROVIDERS["llama-3.3-70b-instruct"];
+        const providerAddress = ZERO_G_PROVIDERS["llama-3.3-70b-instruct"];
 
-        console.log(`[0G] Getting service metadata for provider ${providerAddress}...`);
+        loggers.zeroG.debug({ providerAddress }, "Getting service metadata");
         const { endpoint, model } = await broker.inference.getServiceMetadata(providerAddress);
 
-        console.log(`[0G] Getting request headers...`);
+        loggers.zeroG.debug("Getting request headers");
         const headers = await broker.inference.getRequestHeaders(providerAddress, prompt);
 
         const openai = new OpenAI({
@@ -45,7 +42,7 @@ export async function get0GAIResponse(prompt: string, systemPrompt?: string): Pr
         if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
         messages.push({ role: "user", content: prompt });
 
-        console.log(`[0G] Sending inference request to model ${model} at ${endpoint}...`);
+        loggers.zeroG.info({ model, endpoint }, "Sending inference request");
         const completion = await openai.chat.completions.create(
             { messages, model },
             { headers: requestHeaders }
@@ -56,20 +53,19 @@ export async function get0GAIResponse(prompt: string, systemPrompt?: string): Pr
 
         try {
             await broker.inference.processResponse(providerAddress, chatId, content);
-            console.log(`[0G] Successfully processed payment for inference`);
+            loggers.zeroG.info("Successfully processed payment for inference");
         } catch (err: any) {
-            console.warn(`[0G] Failed to process payment (likely missing 0G funds for the fee, but we got the response!):`, err.message);
+            loggers.zeroG.warn({ err: err.message }, "Failed to process payment (likely missing 0G funds)");
         }
 
         return content;
     } catch (err: any) {
-        console.warn(`[0G Compute Exception] ${err.message}`);
-        console.log(`[0G Compute] Gracefully falling back to traditional AI inference due to missing 0G Testnet Sub-account funds...`);
+        loggers.zeroG.warn({ err: err.message }, "0G Compute failed, falling back to traditional AI");
 
         // Graceful Fallback for demo purposes if 0G Testnet wallet isn't funded
         const fallbackOpenAI = new OpenAI({
-            baseURL: process.env.OPENROUTER_API_KEY ? "https://openrouter.ai/api/v1" : undefined,
-            apiKey: process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY,
+            baseURL: config.OPENROUTER_API_KEY ? "https://openrouter.ai/api/v1" : undefined,
+            apiKey: config.OPENROUTER_API_KEY || config.OPENAI_API_KEY,
         });
 
         const fallbackMessages: { role: "system" | "user", content: string }[] = [];
@@ -78,7 +74,7 @@ export async function get0GAIResponse(prompt: string, systemPrompt?: string): Pr
 
         const completion = await fallbackOpenAI.chat.completions.create({
             messages: fallbackMessages,
-            model: process.env.OPENROUTER_API_KEY ? "arcee-ai/trinity-large-preview:free" : "gpt-4o-mini",
+            model: config.OPENROUTER_API_KEY ? config.OPENROUTER_MODEL : config.OPENAI_ARTICLE_MODEL,
         });
 
         return completion.choices[0].message.content || "";

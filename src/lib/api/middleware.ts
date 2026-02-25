@@ -4,14 +4,16 @@ import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { ethers } from "ethers";
+import {
+    AGENT_WALLET_ADDRESS,
+    MIN_PAYMENT_WEI,
+    config,
+} from "@/lib/config";
 
-const AGENT_WALLET = "0x0D2e1e3bE6A63A08EaF42c69DaD6900a748B8Ed9";
-const MIN_PAYMENT_WEI = BigInt("1000000000000"); // 0.000001 ETH (~$0.001)
-
-// Affiliate link URLs (configurable via env)
+// Affiliate link URLs (from centralized config)
 export const TRADE_LINKS = {
-    polymarket: process.env.NEXT_PUBLIC_POLYMARKET_AFFILIATE_URL || "https://polymarket.com",
-    kalshi: process.env.NEXT_PUBLIC_KALSHI_AFFILIATE_URL || "https://kalshi.com",
+    polymarket: config.NEXT_PUBLIC_POLYMARKET_AFFILIATE_URL,
+    kalshi: config.NEXT_PUBLIC_KALSHI_AFFILIATE_URL,
 };
 
 export type AuthResult = {
@@ -91,7 +93,7 @@ export async function authenticateRequest(req: Request): Promise<AuthResult> {
 /** Verify an on-chain x402 micropayment to our agent wallet. */
 async function verifyX402Payment(txHash: string): Promise<boolean> {
     try {
-        const cdpApiKey = process.env.CDP_CLIENT_API_KEY;
+        const cdpApiKey = config.CDP_CLIENT_API_KEY;
         const provider = cdpApiKey
             ? new ethers.JsonRpcProvider(`https://api.developer.coinbase.com/rpc/v1/base-sepolia/${cdpApiKey}`)
             : new ethers.JsonRpcProvider("https://sepolia.base.org");
@@ -103,7 +105,7 @@ async function verifyX402Payment(txHash: string): Promise<boolean> {
         if (!tx) return false;
 
         // Verify the payment was sent to our wallet
-        if (tx.to?.toLowerCase() !== AGENT_WALLET.toLowerCase()) return false;
+        if (tx.to?.toLowerCase() !== AGENT_WALLET_ADDRESS.toLowerCase()) return false;
 
         // Verify minimum payment amount
         if (tx.value < MIN_PAYMENT_WEI) return false;
@@ -148,7 +150,7 @@ export function build402Response() {
                 },
                 x402: {
                     description: "Pay per call with ETH on Base Sepolia ($0.001/call)",
-                    recipientAddress: AGENT_WALLET,
+                    recipientAddress: AGENT_WALLET_ADDRESS,
                     minimumPaymentWei: MIN_PAYMENT_WEI.toString(),
                     chain: "Base Sepolia (Chain ID: 84532)",
                     usage: 'Set header: X-402-Payment: YOUR_TX_HASH',

@@ -9,7 +9,7 @@ import { fetchPolymarketEvents } from "./polymarket";
 import { fetchKalshiMarkets } from "./kalshi";
 import { normalizePolymarketEvent, normalizeKalshiMarket, matchScore } from "./normalize";
 import type { NormalizedMarket } from "./types";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 const CROSS_MATCH_THRESHOLD = 0.75;
 
@@ -119,6 +119,7 @@ export async function runIngestion(): Promise<{
     });
   }
 
+  // ── Bulk upsert markets (single query instead of 200+ individual INSERT/UPDATEs) ──
   const snapshotInserts: Array<{
     marketId: string;
     source: "polymarket" | "kalshi";
@@ -126,14 +127,31 @@ export async function runIngestion(): Promise<{
     volume?: string;
   }> = [];
 
-  for (const row of toUpsert) {
+  // Prepare all rows with their final IDs
+  const bulkValues = toUpsert.map((row) => {
     const existingId =
       row.id ??
       (row.polymarketId ? existingByPoly.get(row.polymarketId) : undefined) ??
       (row.kalshiTicker ? existingByKalshi.get(row.kalshiTicker) : undefined);
     const marketId = existingId ?? crypto.randomUUID();
 
-    const values = {
+    // Collect snapshots while we iterate
+    if (row.polymarketProbability)
+      snapshotInserts.push({
+        marketId,
+        source: "polymarket",
+        probability: row.polymarketProbability,
+        volume: row.volume24h,
+      });
+    if (row.kalshiProbability)
+      snapshotInserts.push({
+        marketId,
+        source: "kalshi",
+        probability: row.kalshiProbability,
+        volume: row.volume24h,
+      });
+
+    return {
       id: marketId,
       polymarketId: row.polymarketId ?? null,
       kalshiTicker: row.kalshiTicker ?? null,
@@ -150,50 +168,47 @@ export async function runIngestion(): Promise<{
       kalshiEventTicker: row.kalshiEventTicker ?? null,
       updatedAt: new Date(),
     };
+  });
 
-    if (existingId) {
-      await db.update(markets).set({
-        title: values.title,
-        description: values.description,
-        category: values.category,
-        currentProbability: values.currentProbability,
-        polymarketProbability: values.polymarketProbability,
-        kalshiProbability: values.kalshiProbability,
-        volume24h: values.volume24h,
-        status: values.status,
-        polymarketSlug: values.polymarketSlug,
-        kalshiEventTicker: values.kalshiEventTicker,
-        updatedAt: values.updatedAt,
-      }).where(eq(markets.id, marketId));
-    } else {
-      await db.insert(markets).values({
-        ...values,
-      });
+  // Bulk upsert all markets in a single query
+  if (bulkValues.length > 0) {
+    const CHUNK_SIZE = 100;
+    for (let i = 0; i < bulkValues.length; i += CHUNK_SIZE) {
+      const chunk = bulkValues.slice(i, i + CHUNK_SIZE);
+      await db
+        .insert(markets)
+        .values(chunk)
+        .onConflictDoUpdate({
+          target: markets.id,
+          set: {
+            title: sql`excluded.title`,
+            description: sql`excluded.description`,
+            category: sql`excluded.category`,
+            currentProbability: sql`excluded.current_probability`,
+            polymarketProbability: sql`excluded.polymarket_probability`,
+            kalshiProbability: sql`excluded.kalshi_probability`,
+            volume24h: sql`excluded.volume_24h`,
+            status: sql`excluded.status`,
+            polymarketSlug: sql`excluded.polymarket_slug`,
+            kalshiEventTicker: sql`excluded.kalshi_event_ticker`,
+            updatedAt: sql`excluded.updated_at`,
+          },
+        });
     }
-
-    if (row.polymarketProbability)
-      snapshotInserts.push({
-        marketId,
-        source: "polymarket",
-        probability: row.polymarketProbability,
-        volume: row.volume24h,
-      });
-    if (row.kalshiProbability)
-      snapshotInserts.push({
-        marketId,
-        source: "kalshi",
-        probability: row.kalshiProbability,
-        volume: row.volume24h,
-      });
   }
 
-  for (const s of snapshotInserts) {
-    await db.insert(probabilitySnapshots).values({
-      marketId: s.marketId,
-      source: s.source,
-      probability: s.probability,
-      volume: s.volume ?? null,
-    });
+  // Batch insert all probability snapshots in a single query
+  if (snapshotInserts.length > 0) {
+    const CHUNK_SIZE = 100;
+    for (let i = 0; i < snapshotInserts.length; i += CHUNK_SIZE) {
+      const chunk = snapshotInserts.slice(i, i + CHUNK_SIZE).map((s) => ({
+        marketId: s.marketId,
+        source: s.source,
+        probability: s.probability,
+        volume: s.volume ?? null,
+      }));
+      await db.insert(probabilitySnapshots).values(chunk);
+    }
   }
 
   return {
@@ -203,3 +218,4 @@ export async function runIngestion(): Promise<{
     snapshotCount: snapshotInserts.length,
   };
 }
+

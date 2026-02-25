@@ -9,6 +9,7 @@ import { buildArticlePrompt } from "./prompts";
 import { getArticleLLM, generateArticleImage } from "./llm";
 import { get0GAIResponse } from "@/lib/zeroG/client";
 import { matchScore } from "@/lib/ingestion/normalize";
+import { loggers, createPipelineLogger } from "@/lib/logger";
 
 /** Extract JSON from model output (handles optional markdown code blocks). */
 function extractJson(raw: string): string {
@@ -84,7 +85,7 @@ export async function generateArticleForMarket(
     try {
       raw = await get0GAIResponse(prompt, "You are a professional journalist. You must output strictly valid JSON matching the requested schema.");
     } catch (err) {
-      console.error(err);
+      loggers.articles.error({ err, marketId }, "0G inference failed, using empty fallback");
     }
 
     // We always parse JSON out in case the decentralized inference added markdown ticks
@@ -178,6 +179,7 @@ export async function runEditionPipeline(limit = 30): Promise<{
   const balanceCheck = await getAgentBalance();
   if (!balanceCheck.solvent) {
     console.error("[Autonomous Agent] HALTED: The Editor Agent ran out of Base Mainnet funds and is insolvent. Refusing to generate a new edition until funded via ERC-8021.");
+    loggers.articles.error("Agent insolvent — halting edition pipeline until funded");
     return {
       editionId: "",
       volumeNumber: null,
@@ -241,7 +243,11 @@ export async function runEditionPipeline(limit = 30): Promise<{
 
   // Combine: Polymarket first, then unique Kalshi markets
   const topMarkets = [...polyMarkets, ...dedupedKalshi];
-  console.log(`[Edition] Selected ${polyMarkets.length} Polymarket + ${dedupedKalshi.length} Kalshi (${kalshiMarkets.length - dedupedKalshi.length} dupes removed) = ${topMarkets.length} total markets`);
+  const log = createPipelineLogger("edition", editionId);
+  log.info(
+    { polymarket: polyMarkets.length, kalshi: dedupedKalshi.length, dupesRemoved: kalshiMarkets.length - dedupedKalshi.length, total: topMarkets.length },
+    "Market selection complete"
+  );
 
 
   const errors: string[] = [];
@@ -268,10 +274,10 @@ export async function runEditionPipeline(limit = 30): Promise<{
         layoutDecisions = parsed.layout;
       }
     } catch {
-      console.warn("Could not parse layout from LLM: ", raw);
+      loggers.articles.warn({ raw }, "Could not parse layout from LLM");
     }
   } catch (e) {
-    console.error("Failed to generate editor persona layout", e);
+    loggers.articles.error({ err: e }, "Failed to generate editor persona layout");
   }
 
   // Iterate based on the layout if possible, otherwise fallback to topMarkets order
@@ -285,7 +291,7 @@ export async function runEditionPipeline(limit = 30): Promise<{
       const { logEditorialDecision } = await import("@/lib/hedera/client");
       await logEditorialDecision(editionId, orderedMarkets.map(m => m.decision));
     } catch (err) {
-      console.error("Hedera integration not imported or failed:", err);
+      loggers.hedera.warn({ err }, "Hedera integration not imported or failed");
     }
   }
 
@@ -316,7 +322,7 @@ export async function runEditionPipeline(limit = 30): Promise<{
   // using the 8021 tracker format exactly as specified by the bounty
   try {
     if (generated > 0) {
-      console.log("[Agent] Publishing complete. Issuing Base Mainnet royalty tx with ERC-8021...");
+      loggers.articles.info("Publishing complete — issuing Base Mainnet royalty tx with ERC-8021");
       await submitAgentTransactionWithBuilderCode(
         "0x0000000000000000000000000000000000000000",
         "0", // 0 value for demo unless we actually want to spend
@@ -324,7 +330,7 @@ export async function runEditionPipeline(limit = 30): Promise<{
       );
     }
   } catch (err) {
-    console.warn("Could not log 8021 tx", err);
+    loggers.cdp.warn({ err }, "Could not log 8021 tx");
   }
 
   return { editionId, volumeNumber: edition?.volumeNumber ?? nextVolume, generated, failed, errors };
