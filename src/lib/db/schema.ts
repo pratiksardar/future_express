@@ -125,8 +125,10 @@ export const playcards = pgTable("playcards", {
     .notNull()
     .unique()
     .references(() => articles.id, { onDelete: "cascade" }),
-  /** Path under public, e.g. /playcards/abc-123-slug.png */
-  filePath: varchar("file_path", { length: 512 }).notNull(),
+  /** Image stored in DB (data URI), same pattern as articles.imageUrl. Served via /api/playcards/[id]/image */
+  imageUrl: text("image_url"),
+  /** Legacy: path under public (optional when imageUrl is set) */
+  filePath: varchar("file_path", { length: 512 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

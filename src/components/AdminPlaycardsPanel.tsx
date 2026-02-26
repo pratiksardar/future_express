@@ -6,11 +6,12 @@ const SEQUENCE = "xyzzy";
 const SEQ_LEN = 5;
 
 type PlaycardItem = {
+  id: string;
   articleId: string;
-  filePath: string;
   headline: string;
   slug: string;
   createdAt?: string;
+  imageUrl: string;
 };
 
 export function AdminPlaycardsPanel() {
@@ -104,17 +105,17 @@ export function AdminPlaycardsPanel() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {playcards.map((p) => (
                 <div
-                  key={p.articleId}
+                  key={p.id}
                   className="flex flex-col overflow-hidden rounded border border-[var(--color-rule)] bg-[var(--color-paper-warm)]"
                 >
                   <a
-                    href={p.filePath}
+                    href={p.imageUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="block"
                   >
                     <img
-                      src={p.filePath}
+                      src={p.imageUrl}
                       alt={p.headline}
                       className="h-40 w-full object-cover"
                     />
@@ -127,8 +128,8 @@ export function AdminPlaycardsPanel() {
                       {p.headline}
                     </p>
                     <a
-                      href={p.filePath}
-                      download
+                      href={p.imageUrl}
+                      download={`playcard-${p.slug}.png`}
                       className="mt-2 inline-block w-fit rounded bg-[var(--color-accent-blue)] px-3 py-1.5 text-xs font-medium text-white hover:opacity-90"
                     >
                       Download

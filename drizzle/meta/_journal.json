@@ -15,6 +15,13 @@
       "when": 1772115699410,
       "tag": "0001_add_playcards",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1772122000000,
+      "tag": "0002_playcards_image_url",
+      "breakpoints": true
     }
   ]
 }

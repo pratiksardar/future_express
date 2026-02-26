@@ -1,7 +1,7 @@
 /**
  * Social media agent: generates playcard images from articles for Twitter/social sharing.
- * Saves images to public/playcards and records them in the playcards table.
- * Admin can access and download via the xyzzy panel in the UI.
+ * Stores images in the database (data URI in playcards.imageUrl), same pattern as articles.imageUrl.
+ * Admin can access and download via the xyzzy panel; images served from GET /api/playcards/[id]/image.
  */
 
 import { db } from "@/lib/db";
@@ -9,21 +9,15 @@ import { articles, editionArticles, playcards } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { generatePlaycardResponse, type PlaycardPayload } from "./playcard";
 import { loggers } from "@/lib/logger";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
-
-const PLAYCARDS_DIR = "public/playcards";
-const PLAYCARDS_WEB_PATH = "/playcards";
 
 export type GeneratePlaycardResult = {
   success: boolean;
-  filePath?: string;
   error?: string;
 };
 
 /**
- * Generates a playcard image for an article and saves it to public/playcards.
- * Idempotent per article: if a playcard already exists for this article, skips (or overwrite by design).
+ * Generates a playcard image for an article and stores it in the DB (imageUrl as data URI).
+ * Same storage approach as news article images: image data in the database.
  */
 export async function generateAndSavePlaycard(articleId: string): Promise<GeneratePlaycardResult> {
   const [row] = await db
@@ -64,28 +58,18 @@ export async function generateAndSavePlaycard(articleId: string): Promise<Genera
   try {
     const response = await generatePlaycardResponse(payload);
     const buffer = Buffer.from(await response.arrayBuffer());
-
-    const cwd = process.cwd();
-    const dir = path.join(cwd, PLAYCARDS_DIR);
-    await mkdir(dir, { recursive: true });
-
-    const safeSlug = row.slug.replace(/[^a-z0-9-]/gi, "-").slice(0, 80);
-    const filename = `${row.id}-${safeSlug}.png`;
-    const filePath = path.join(dir, filename);
-    await writeFile(filePath, buffer);
-
-    const webPath = `${PLAYCARDS_WEB_PATH}/${filename}`;
+    const dataUri = `data:image/png;base64,${buffer.toString("base64")}`;
 
     await db
       .insert(playcards)
-      .values({ articleId: row.id, filePath: webPath })
+      .values({ articleId: row.id, imageUrl: dataUri })
       .onConflictDoUpdate({
         target: playcards.articleId,
-        set: { filePath: webPath },
+        set: { imageUrl: dataUri },
       });
 
-    loggers.articles.info({ articleId, filePath: webPath }, "Playcard generated");
-    return { success: true, filePath: webPath };
+    loggers.articles.info({ articleId }, "Playcard generated and stored in DB");
+    return { success: true };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     loggers.articles.error({ err: e, articleId }, "Playcard generation failed");

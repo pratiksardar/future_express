@@ -12,8 +12,8 @@ export async function GET() {
   try {
     const rows = await db
       .select({
+        id: playcards.id,
         articleId: playcards.articleId,
-        filePath: playcards.filePath,
         createdAt: playcards.createdAt,
         headline: articles.headline,
         slug: articles.slug,
@@ -24,11 +24,12 @@ export async function GET() {
 
     return NextResponse.json({
       playcards: rows.map((r) => ({
+        id: r.id,
         articleId: r.articleId,
-        filePath: r.filePath,
         headline: r.headline,
         slug: r.slug,
         createdAt: r.createdAt?.toISOString(),
+        imageUrl: `/api/playcards/${r.id}/image`,
       })),
     });
   } catch (e) {
