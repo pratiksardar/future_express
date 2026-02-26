@@ -1,8 +1,7 @@
 /**
- * Social playcard image generator (Option B: no LLM, no browser).
- * Layout mirrors the article page: masthead-style top, section-title category,
- * optional 21/9 image, headline, subheadline, byline, double rules.
- * Uses next/og ImageResponse (Satori) only — no API calls.
+ * Social playcard image generator — collectible card style (Pokemon-card like).
+ * No LLM; uses next/og ImageResponse (Satori) only.
+ * Includes CTA: visit future-express.vercel.app for more context and news.
  */
 
 import { ImageResponse } from "next/og";
@@ -21,14 +20,20 @@ export type PlaycardPayload = {
 const WIDTH = 1200;
 const HEIGHT = 630;
 
+const CARD_PADDING = 32;
+const BORDER_WIDTH = 12;
+const BORDER_RADIUS = 28;
+const INNER_RADIUS = BORDER_RADIUS - 4;
+
 const COLORS = {
-  paper: "#f5f0e8",
+  cardBg: "#faf6ef",
+  borderOuter: "#1a1a1a",
+  borderAccent: "#b8860b",
   ink: "#1a1a1a",
   inkMedium: "#3d3d3d",
   inkLight: "#6b6b6b",
-  inkFaded: "#9b9b9b",
-  rule: "#c4b9a8",
-  ruleDark: "#8b7e6e",
+  ctaBg: "#1b3a5c",
+  ctaText: "#faf6ef",
 } as const;
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -41,9 +46,10 @@ const CATEGORY_LABELS: Record<string, string> = {
   world: "World",
 };
 
+const CTA_URL = "future-express.vercel.app";
+
 /**
- * Generates a Response containing a PNG playcard image.
- * Layout matches article page: masthead strip, category, image (if any), headline, subhead, byline.
+ * Generates a PNG playcard in collectible-card style with CTA.
  */
 export async function generatePlaycardResponse(
   payload: PlaycardPayload,
@@ -66,164 +72,196 @@ export async function generatePlaycardResponse(
           height: "100%",
           display: "flex",
           flexDirection: "column",
-          backgroundColor: COLORS.paper,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#e8e4dc",
           fontFamily: "Georgia, serif",
+          padding: BORDER_WIDTH,
         }}
       >
-        {/* Top: double rule (matches divider-double / masthead) */}
+        {/* Card outer frame (Pokemon-card style: dark border + gold accent) */}
         <div
           style={{
             width: "100%",
-            height: 3,
-            backgroundColor: COLORS.ruleDark,
-            marginBottom: 12,
-          }}
-        />
-        {/* Masthead-style strip: THE FUTURE EXPRESS */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            paddingTop: 8,
-            paddingBottom: 8,
-            marginBottom: 16,
-          }}
-        >
-          <span
-            style={{
-              fontSize: 28,
-              fontWeight: 900,
-              color: COLORS.ink,
-              letterSpacing: "-0.01em",
-            }}
-          >
-            THE FUTURE EXPRESS
-          </span>
-        </div>
-        <div
-          style={{
-            width: "100%",
-            height: 1,
-            backgroundColor: COLORS.ruleDark,
-            marginBottom: 20,
-          }}
-        />
-
-        {/* Main content: same padding as article page */}
-        <div
-          style={{
-            flex: 1,
+            height: "100%",
             display: "flex",
             flexDirection: "column",
-            paddingLeft: 24,
-            paddingRight: 24,
-            paddingBottom: 24,
+            backgroundColor: COLORS.borderOuter,
+            borderRadius: BORDER_RADIUS,
+            padding: 4,
+            overflow: "hidden",
           }}
         >
-          {/* Section title: category (matches .section-title) */}
-          {categoryLabel && (
-            <div
-              style={{
-                fontSize: 10,
-                fontWeight: 700,
-                letterSpacing: "0.2em",
-                textTransform: "uppercase",
-                color: COLORS.inkLight,
-                marginBottom: 8,
-              }}
-            >
-              {categoryLabel}
-            </div>
-          )}
-
-          {/* Optional article image: 21/9 strip (matches article aspect-[21/9]) */}
-          {hasImage && imageSrc && (
-            <div
-              style={{
-                width: "100%",
-                height: 257,
-                overflow: "hidden",
-                borderRadius: 4,
-                marginBottom: 20,
-                display: "flex",
-              }}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={imageSrc}
-                alt=""
-                width={1200}
-                height={257}
-                style={{
-                  objectFit: "cover",
-                  width: "100%",
-                  height: 257,
-                }}
-              />
-            </div>
-          )}
-
-          {/* Headline (matches article h1: font-display, bold, color-ink) */}
-          <h1
+          {/* Inner gold stripe */}
+          <div
             style={{
-              fontSize: 36,
-              fontWeight: 700,
-              color: COLORS.ink,
-              lineHeight: 1.2,
-              margin: 0,
-              marginBottom: 12,
+              width: "100%",
+              height: "100%",
               display: "flex",
+              flexDirection: "column",
+              backgroundColor: COLORS.borderAccent,
+              borderRadius: INNER_RADIUS,
+              padding: 4,
+              overflow: "hidden",
             }}
           >
-            {payload.headline.length > 95
-              ? payload.headline.slice(0, 92) + "…"
-              : payload.headline}
-          </h1>
-
-          {/* Subheadline (matches article: italic, font-sub, ink-medium) */}
-          {payload.subheadline && (
-            <p
+            {/* Card face */}
+            <div
               style={{
-                fontSize: 20,
-                fontStyle: "italic",
-                color: COLORS.inkMedium,
-                lineHeight: 1.4,
-                margin: 0,
-                marginBottom: 12,
+                flex: 1,
                 display: "flex",
+                flexDirection: "column",
+                backgroundColor: COLORS.cardBg,
+                borderRadius: INNER_RADIUS - 2,
+                overflow: "hidden",
               }}
             >
-              {payload.subheadline.length > 130
-                ? payload.subheadline.slice(0, 127) + "…"
-                : payload.subheadline}
-            </p>
-          )}
+              {/* Art / image area (top of card) */}
+              <div
+                style={{
+                  width: "100%",
+                  height: 280,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  overflow: "hidden",
+                  backgroundColor: "#ede7d9",
+                }}
+              >
+                {hasImage && imageSrc ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={imageSrc}
+                    alt=""
+                    width={1200}
+                    height={280}
+                    style={{
+                      objectFit: "cover",
+                      width: "100%",
+                      height: "100%",
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: COLORS.inkLight,
+                      fontSize: 14,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.15em",
+                    }}
+                  >
+                    The Future Express
+                  </div>
+                )}
+              </div>
 
-          {/* Byline (matches article: "By The Future Express Newsroom · date · 5 min read") */}
-          <p
-            style={{
-              fontSize: 12,
-              fontStyle: "italic",
-              color: COLORS.inkLight,
-              margin: 0,
-            }}
-          >
-            By The Future Express Newsroom
-            {payload.publishedAt ? ` · ${payload.publishedAt}` : ""} · 5 min
-            read
-          </p>
+              {/* Text area (name + description) */}
+              <div
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  paddingLeft: CARD_PADDING,
+                  paddingRight: CARD_PADDING,
+                  paddingTop: 20,
+                  paddingBottom: 16,
+                }}
+              >
+                {categoryLabel && (
+                  <div
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: "0.2em",
+                      textTransform: "uppercase",
+                      color: COLORS.inkLight,
+                      marginBottom: 6,
+                    }}
+                  >
+                    {categoryLabel}
+                  </div>
+                )}
+
+                {/* Headline — card “name” */}
+                <h1
+                  style={{
+                    fontSize: 32,
+                    fontWeight: 800,
+                    color: COLORS.ink,
+                    lineHeight: 1.2,
+                    margin: 0,
+                    marginBottom: 10,
+                    display: "flex",
+                  }}
+                >
+                  {payload.headline.length > 88
+                    ? payload.headline.slice(0, 85) + "…"
+                    : payload.headline}
+                </h1>
+
+                {payload.subheadline && (
+                  <p
+                    style={{
+                      fontSize: 18,
+                      color: COLORS.inkMedium,
+                      lineHeight: 1.35,
+                      margin: 0,
+                      display: "flex",
+                      flex: 1,
+                    }}
+                  >
+                    {payload.subheadline.length > 120
+                      ? payload.subheadline.slice(0, 117) + "…"
+                      : payload.subheadline}
+                  </p>
+                )}
+
+                {payload.publishedAt && (
+                  <p
+                    style={{
+                      fontSize: 11,
+                      color: COLORS.inkLight,
+                      marginTop: 8,
+                      margin: 0,
+                    }}
+                  >
+                    {payload.publishedAt}
+                  </p>
+                )}
+              </div>
+
+              {/* CTA bar (bottom of card) */}
+              <div
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: COLORS.ctaBg,
+                  paddingTop: 14,
+                  paddingBottom: 14,
+                  paddingLeft: 20,
+                  paddingRight: 20,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 700,
+                    color: COLORS.ctaText,
+                    letterSpacing: "0.02em",
+                  }}
+                >
+                  Visit {CTA_URL} for more context and news
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
-
-        {/* Bottom: double rule (matches divider-double) */}
-        <div
-          style={{
-            width: "100%",
-            height: 3,
-            backgroundColor: COLORS.ruleDark,
-            marginTop: "auto",
-          }}
-        />
       </div>
     ),
     {
