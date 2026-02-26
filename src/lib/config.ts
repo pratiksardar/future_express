@@ -30,7 +30,7 @@ const envSchema = z.object({
     OPENROUTER_API_KEY: z.string().optional(),
     OPENROUTER_MODEL: z.string().default("arcee-ai/trinity-mini:free"),
     ANTHROPIC_API_KEY: z.string().optional(),
-    ANTHROPIC_MODEL: z.string().default("claude-sonnet-4-20250514"),
+    ANTHROPIC_MODEL: z.string().default("claude-sonnet-4-6"),
 
     // ── LLM Provider Priority (comma-separated, first = primary, rest = fallbacks) ──
     LLM_PROVIDER_PRIORITY: z.string().default("openrouter,openai,anthropic"),

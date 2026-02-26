@@ -113,7 +113,7 @@ function buildProviderLLM(provider: LLMProvider): ArticleLLM | null {
       return {
         kind: "anthropic",
         client: new Anthropic({ apiKey: key }),
-        model: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-20250514",
+        model: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6",
         supportsJsonMode: false,
         provider: "anthropic",
       };
