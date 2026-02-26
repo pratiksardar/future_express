@@ -10,7 +10,7 @@ async function run() {
     console.log("Ingestion result:", ingest);
 
     console.log("Running Edition Pipeline...");
-    const edition = await runEditionPipeline(30);
+    const edition = await runEditionPipeline();
     console.log("Edition pipeline result:", edition);
 
     const countResult = await db.select({ value: count() }).from(markets).where(eq(markets.status, "active"));

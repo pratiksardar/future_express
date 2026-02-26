@@ -1,6 +1,4 @@
-/** Number of articles to take from EACH source (Polymarket + Kalshi). */
-export const TOP_TRENDING_ARTICLE_COUNT = 15;
-
+import { getEditionTopNewsPerSource } from "@/lib/config";
 import { db } from "@/lib/db";
 import { articles, markets, editions, editionArticles } from "@/lib/db/schema";
 import { eq, desc, and, isNotNull, isNull, or, sql } from "drizzle-orm";
@@ -65,6 +63,7 @@ export async function generateArticleForMarket(
   success: boolean;
   articleId?: string;
   error?: string;
+  playcardOk?: boolean;
 }> {
   const { editionId, editionType = "morning", slugSuffix, newsAngle, requiresImage } = options;
   const [market] = await db.select().from(markets).where(eq(markets.id, marketId));
@@ -154,6 +153,17 @@ export async function generateArticleForMarket(
         articleId: inserted.id,
         position: nextPos,
       });
+
+      // Generate playcard for this article as part of article generation (same volume)
+      let playcardOk = false;
+      try {
+        const { generateAndSavePlaycard } = await import("@/lib/articles/socialAgent");
+        const pc = await generateAndSavePlaycard(inserted.id, editionId);
+        playcardOk = pc.success;
+      } catch (err) {
+        loggers.articles.warn({ err, articleId: inserted.id }, "Playcard generation failed for article");
+      }
+      return { success: true, articleId: inserted?.id, playcardOk };
     }
 
     return { success: true, articleId: inserted?.id };
@@ -167,7 +177,7 @@ import { buildEditorPersonaPrompt } from "./prompts";
 import { getAgentBalance, submitAgentTransactionWithBuilderCode } from "@/lib/cdp/client";
 
 /** Creates a new edition and generates short articles for top markets by volume. Runs every 4h. */
-export async function runEditionPipeline(limit = 30): Promise<{
+export async function runEditionPipeline(): Promise<{
   editionId: string;
   volumeNumber: number | null;
   generated: number;
@@ -212,22 +222,21 @@ export async function runEditionPipeline(limit = 30): Promise<{
   if (!editionId)
     return { editionId: "", volumeNumber: null, generated: 0, failed: 0, errors: ["Failed to create edition"] };
 
-  // ── Balanced market selection: 15 from Polymarket, 15 from Kalshi ──
-  // Polymarket-sourced markets have polymarketId set
+  // ── Balanced market selection: N from Polymarket, N from Kalshi (N = EDITION_TOP_NEWS_PER_SOURCE) ──
+  const topNewsPerSource = getEditionTopNewsPerSource();
   const polyMarkets = await db
     .select()
     .from(markets)
     .where(and(eq(markets.status, "active"), isNotNull(markets.polymarketId)))
     .orderBy(desc(markets.volume24h))
-    .limit(TOP_TRENDING_ARTICLE_COUNT);
+    .limit(topNewsPerSource);
 
-  // Kalshi-sourced markets have kalshiTicker set (exclude already-merged ones that have polymarketId too)
   const kalshiMarkets = await db
     .select()
     .from(markets)
     .where(and(eq(markets.status, "active"), isNotNull(markets.kalshiTicker), isNull(markets.polymarketId)))
     .orderBy(desc(markets.volume24h))
-    .limit(TOP_TRENDING_ARTICLE_COUNT);
+    .limit(topNewsPerSource);
 
   // Dedup: if a Kalshi market title is very similar to a Polymarket one, skip it (it's the same question)
   const DEDUP_THRESHOLD = 0.70;
@@ -294,6 +303,10 @@ export async function runEditionPipeline(limit = 30): Promise<{
     }
   }
 
+  let playcardsGenerated = 0;
+  let playcardsFailed = 0;
+  const playcardErrors: string[] = [];
+
   for (const { market, decision } of orderedMarkets) {
     if (!market) continue;
     const result = await generateArticleForMarket(market.id, {
@@ -310,26 +323,26 @@ export async function runEditionPipeline(limit = 30): Promise<{
         .set({ position: decision.position })
         .where(eq(editionArticles.articleId, result.articleId));
       generated++;
+      if (result.playcardOk) playcardsGenerated++;
+      else if (result.articleId) {
+        playcardsFailed++;
+        playcardErrors.push(`${market.title}: playcard failed`);
+      }
     } else {
       failed++;
       if (result.error) errors.push(`${market.title}: ${result.error}`);
     }
   }
 
-  // Social media agent: generate playcards for Twitter/social sharing (admin-only via xyzzy)
-  let playcardsResult: { generated: number; failed: number; errors: string[] } | undefined;
-  if (generated > 0) {
-    try {
-      const { runSocialAgentForEdition } = await import("@/lib/articles/socialAgent");
-      playcardsResult = await runSocialAgentForEdition(editionId);
-      loggers.articles.info(
-        { editionId, playcards: playcardsResult.generated },
-        "Social playcards generated"
-      );
-    } catch (err) {
-      loggers.articles.warn({ err, editionId }, "Social playcard generation failed");
-      playcardsResult = { generated: 0, failed: 0, errors: [String(err)] };
-    }
+  const playcardsResult =
+    generated > 0
+      ? { generated: playcardsGenerated, failed: playcardsFailed, errors: playcardErrors }
+      : undefined;
+  if (playcardsResult && (playcardsGenerated > 0 || playcardsFailed > 0)) {
+    loggers.articles.info(
+      { editionId, playcards: playcardsGenerated, playcardsFailed },
+      "Social playcards generated with articles"
+    );
   }
 
   // Post-Edition: Autonomous Sub-wallet 8021 tracking execution payment
@@ -361,7 +374,7 @@ export async function runEditionPipeline(limit = 30): Promise<{
 /**
  * Generates short news articles for the top N trending Polymarket markets (by 24h volume)
  * that don't already have an article. Used to fill the newspaper feed.
- * N = TOP_TRENDING_ARTICLE_COUNT (default 15).
+ * N = EDITION_TOP_NEWS_PER_SOURCE (config).
  */
 export async function generateMorningEdition(limit = 50): Promise<{
   generated: number;
@@ -380,9 +393,10 @@ export async function generateMorningEdition(limit = 50): Promise<{
     (await db.select({ marketId: articles.marketId }).from(articles)).map((r) => r.marketId)
   );
 
+  const cap = getEditionTopNewsPerSource();
   const toGenerate = topMarkets
     .filter((m) => !existingArticleMarketIds.has(m.id))
-    .slice(0, TOP_TRENDING_ARTICLE_COUNT);
+    .slice(0, cap);
 
   const errors: string[] = [];
   let generated = 0;

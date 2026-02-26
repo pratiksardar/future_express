@@ -26,7 +26,7 @@ async function main() {
         console.log(`[Hedera Listener] Initiating autonomous AI edition pipeline...`);
 
         try {
-            const result = await runEditionPipeline(5);
+            const result = await runEditionPipeline();
             console.log(`[Hedera Listener] Pipeline complete! Generated edition ${result.editionId} with ${result.generated} articles`);
         } catch (err) {
             console.error(`[Hedera Listener] Error running pipeline:`, err);

@@ -34,7 +34,7 @@ async function main() {
         console.log(`- Snapshots: ${ingest.snapshotCount}`);
 
         console.log("\n[2/2] Running Edition Pipeline (Generating AI articles)...");
-        const edition = await runEditionPipeline(30);
+        const edition = await runEditionPipeline();
         console.log("Edition Pipeline Complete:");
         console.log(`- Edition ID: ${edition.editionId ?? 'None'}`);
         console.log(`- Articles Generated: ${edition.generated}`);

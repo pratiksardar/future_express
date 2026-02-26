@@ -84,6 +84,12 @@ const envSchema = z.object({
     // ── Hedera (server-only) ──
     HEDERA_ACCOUNT_ID: z.string().optional(),
     HEDERA_PRIVATE_KEY: z.string().optional(),
+
+    // ── Edition pipeline: how many top news per source (Polymarket + Kalshi). Increase as traction grows. ──
+    EDITION_TOP_NEWS_PER_SOURCE: z
+        .string()
+        .default("15")
+        .transform((v) => Math.max(1, Math.min(50, parseInt(v, 10) || 15))),
 });
 
 export type AppConfig = z.infer<typeof envSchema>;
@@ -143,3 +149,12 @@ export const RPC = {
 export const ZERO_G_PROVIDERS = {
     "llama-3.3-70b-instruct": "0xa48f01287233509FD694a22Bf840225062E67836",
 } as const;
+
+// ────────────────────────────────────────────────
+// Edition / top-news tuning (from env)
+// ────────────────────────────────────────────────
+
+/** How many top markets to take from each source (Polymarket, Kalshi) per edition. Set EDITION_TOP_NEWS_PER_SOURCE in env to tune (default 15, clamp 1–50). */
+export function getEditionTopNewsPerSource(): number {
+    return getConfig().EDITION_TOP_NEWS_PER_SOURCE;
+}

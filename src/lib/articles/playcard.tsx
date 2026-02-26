@@ -1,6 +1,7 @@
 /**
  * Social playcard image generator — collectible card style (Pokemon-card like).
  * No LLM; uses next/og ImageResponse (Satori) only.
+ * Aspect ratios for social: 1:1 (square, 1080×1080) when no article image; 4:5 (1080×1350) when image exists.
  * Includes CTA: visit future-express.vercel.app for more context and news.
  */
 
@@ -19,12 +20,15 @@ export type PlaycardPayload = {
   publishedAt?: string;
 };
 
-const WIDTH = 1200;
-const HEIGHT = 630;
+/** Square 1:1 for Instagram/Twitter when no article image. */
+const SIZE_SQUARE = 1080;
+/** With image: 4:5 portrait (Instagram-friendly). */
+const WIDTH_WITH_IMAGE = 1080;
+const HEIGHT_4_5 = 1350; // 4:5
 
-const CARD_PADDING = 32;
-const BORDER_WIDTH = 12;
-const BORDER_RADIUS = 28;
+const CARD_PADDING = 28;
+const BORDER_WIDTH = 10;
+const BORDER_RADIUS = 24;
 const INNER_RADIUS = BORDER_RADIUS - 4;
 
 const COLORS = {
@@ -65,17 +69,29 @@ export async function generatePlaycardResponse(
     (payload.category && CATEGORY_LABELS[payload.category]) ||
     payload.category ||
     "";
-  const bodyText =
+  const rawBody =
     payload.bodyExcerpt ||
     (payload.subheadline
       ? (payload.subheadline.length > 380
           ? payload.subheadline.slice(0, 377) + "…"
           : payload.subheadline)
       : "");
+  // Square (no image) has less room — use shorter excerpt
+  const bodyText = rawBody
+    ? hasImage
+      ? rawBody.length > 420
+        ? rawBody.slice(0, 417) + "…"
+        : rawBody
+      : rawBody.length > 280
+        ? rawBody.slice(0, 277) + "…"
+        : rawBody
+    : "";
 
-  const headlineSize = hasImage ? 30 : 40;
-  const imageAreaHeight = hasImage ? 260 : 0;
-  const brandingBarHeight = hasImage ? 0 : 44;
+  const headlineSize = hasImage ? 28 : 36;
+  const imageAreaHeight = hasImage ? 500 : 0; // 4:5 card: hero takes ~500px
+  const brandingBarHeight = hasImage ? 0 : 40;
+  const width = hasImage ? WIDTH_WITH_IMAGE : SIZE_SQUARE;
+  const height = hasImage ? HEIGHT_4_5 : SIZE_SQUARE;
 
   return new ImageResponse(
     (
@@ -139,7 +155,7 @@ export async function generatePlaycardResponse(
                   <img
                     src={imageSrc}
                     alt=""
-                    width={1200}
+                    width={width}
                     height={imageAreaHeight}
                     style={{
                       objectFit: "cover",
@@ -203,12 +219,12 @@ export async function generatePlaycardResponse(
                     color: COLORS.ink,
                     lineHeight: 1.2,
                     margin: 0,
-                    marginBottom: 10,
+                    marginBottom: 8,
                     display: "flex",
                   }}
                 >
-                  {payload.headline.length > (hasImage ? 85 : 72)
-                    ? payload.headline.slice(0, (hasImage ? 82 : 69)) + "…"
+                  {payload.headline.length > (hasImage ? 90 : 65)
+                    ? payload.headline.slice(0, (hasImage ? 87 : 62)) + "…"
                     : payload.headline}
                 </h1>
 
@@ -271,8 +287,8 @@ export async function generatePlaycardResponse(
       </div>
     ),
     {
-      width: WIDTH,
-      height: HEIGHT,
+      width,
+      height,
     }
   );
 }

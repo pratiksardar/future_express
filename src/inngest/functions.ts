@@ -16,7 +16,7 @@ export const editionEvery4h = inngest.createFunction(
   { cron: "0 */4 * * *" },
   async () => {
     const ingest = await runIngestion();
-    const edition = await runEditionPipeline(30);
+    const edition = await runEditionPipeline();
     return { ingest, edition };
   }
 );

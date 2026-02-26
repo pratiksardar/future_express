@@ -13,7 +13,7 @@ export const maxDuration = 300;
  * Run the edition pipeline once (same as the 4h cron):
  * 1. If EDITOR_WALLET_ADDRESS is set, check Base balance; skip if below MIN_EDITOR_BALANCE_ETH (self-sustaining).
  * 2. Ingest Polymarket + Kalshi data (unless ?ingest=false)
- * 3. Create a new edition and generate articles for top 10–15 trending markets.
+ * 3. Create a new edition and generate articles (count = EDITION_TOP_NEWS_PER_SOURCE per source).
  * POST to trigger manually.
  * Ensure OPENAI_API_KEY, OPENROUTER_API_KEY, or ANTHROPIC_API_KEY is set for article generation.
  */
@@ -41,7 +41,7 @@ export async function GET(req: Request) {
     const ingest = skipIngest
       ? { polymarketCount: 0, kalshiCount: 0, mergedCount: 0, snapshotCount: 0 }
       : await runIngestion();
-    const edition = await runEditionPipeline(30);
+    const edition = await runEditionPipeline();
     const countResult = await db
       .select({ value: count() })
       .from(markets)
