@@ -8,6 +8,13 @@
       "when": 1771935642653,
       "tag": "0000_talented_stingray",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1772115699410,
+      "tag": "0001_add_playcards",
+      "breakpoints": true
     }
   ]
 }

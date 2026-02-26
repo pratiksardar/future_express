@@ -3,6 +3,7 @@ import { createZGComputeNetworkBroker } from "@0glabs/0g-serving-broker";
 import OpenAI from "openai";
 import { RPC, ZERO_G_PROVIDERS, config } from "@/lib/config";
 import { loggers } from "@/lib/logger";
+import { chatCompletion } from "@/lib/articles/llm";
 
 export async function get0GAIResponse(prompt: string, systemPrompt?: string): Promise<string> {
     const privateKey = config.BASE_SEPOLIA_PRIVATE_KEY?.trim();
@@ -60,23 +61,15 @@ export async function get0GAIResponse(prompt: string, systemPrompt?: string): Pr
 
         return content;
     } catch (err: any) {
-        loggers.zeroG.warn({ err: err.message }, "0G Compute failed, falling back to traditional AI");
+        loggers.zeroG.warn({ err: err.message }, "0G Compute failed, falling back to priority-ordered LLM providers");
 
-        // Graceful Fallback for demo purposes if 0G Testnet wallet isn't funded
-        const fallbackOpenAI = new OpenAI({
-            baseURL: config.OPENROUTER_API_KEY ? "https://openrouter.ai/api/v1" : undefined,
-            apiKey: config.OPENROUTER_API_KEY || config.OPENAI_API_KEY,
-        });
+        // Graceful Fallback: uses the priority-ordered provider chain (OpenRouter → OpenAI → Anthropic, etc.)
+        const messages: { role: "system" | "user" | "assistant", content: string }[] = [];
+        if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
+        messages.push({ role: "user", content: prompt });
 
-        const fallbackMessages: { role: "system" | "user", content: string }[] = [];
-        if (systemPrompt) fallbackMessages.push({ role: "system", content: systemPrompt });
-        fallbackMessages.push({ role: "user", content: prompt });
-
-        const completion = await fallbackOpenAI.chat.completions.create({
-            messages: fallbackMessages,
-            model: config.OPENROUTER_API_KEY ? config.OPENROUTER_MODEL : config.OPENAI_ARTICLE_MODEL,
-        });
-
-        return completion.choices[0].message.content || "";
+        const result = await chatCompletion({ messages });
+        loggers.zeroG.info({ provider: result.provider, model: result.model }, "Fallback LLM responded");
+        return result.content;
     }
 }

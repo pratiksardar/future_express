@@ -8,6 +8,7 @@ import {
 } from "next/font/google";
 import "./globals.css";
 import { EditionProvider } from "@/components/EditionProvider";
+import { AdminPlaycardsPanel } from "@/components/AdminPlaycardsPanel";
 
 import { Analytics } from "@vercel/analytics/react";
 
@@ -59,6 +60,7 @@ export default function RootLayout({
     >
       <body className="antialiased" style={{ fontFamily: "var(--font-body)" }}>
         <EditionProvider>{children}</EditionProvider>
+        <AdminPlaycardsPanel />
         <Analytics />
       </body>
     </html>

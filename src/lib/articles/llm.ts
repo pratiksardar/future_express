@@ -1,6 +1,5 @@
 import OpenAI from "openai";
-import fs from "fs";
-import path from "path";
+import Anthropic from "@anthropic-ai/sdk";
 import { authorizeX402PaymentForImage } from "@/lib/kite/client";
 
 // ==========================================
@@ -15,36 +14,263 @@ export const AI_MODELS = {
   IMAGE_MODEL: "sourceful/riverflow-v2-fast:free"
 };
 
-/**
- * Returns an OpenAI-compatible client for article generation.
- * When OPENROUTER_API_KEY is set, uses OpenRouter (e.g. TEXT_MODEL).
- * Otherwise uses OpenAI.
- */
-export function getArticleLLM(): {
+// ==========================================
+// LLM PROVIDER TYPES
+// ==========================================
+
+/** Supported LLM provider identifiers. */
+export type LLMProvider = "openai" | "openrouter" | "anthropic";
+
+/** The shape returned by getArticleLLM for OpenAI-compatible providers. */
+export type OpenAICompatibleLLM = {
+  kind: "openai-compatible";
   client: OpenAI;
   model: string;
   supportsJsonMode: boolean;
-} {
-  const openRouterKey = process.env.OPENROUTER_API_KEY;
-  const openRouterModel = process.env.OPENROUTER_MODEL || AI_MODELS.TEXT_MODEL;
+  provider: LLMProvider;
+};
 
-  if (openRouterKey) {
-    return {
-      client: new OpenAI({
-        apiKey: openRouterKey,
-        baseURL: "https://openrouter.ai/api/v1",
-      }),
-      model: openRouterModel,
-      supportsJsonMode: false,
-    };
+/** The shape returned by getArticleLLM for the native Anthropic provider. */
+export type AnthropicLLM = {
+  kind: "anthropic";
+  client: Anthropic;
+  model: string;
+  supportsJsonMode: boolean;
+  provider: "anthropic";
+};
+
+/** Unified LLM handle. Callers can branch on `kind` if needed. */
+export type ArticleLLM = OpenAICompatibleLLM | AnthropicLLM;
+
+// ==========================================
+// PROVIDER PRIORITY & FALLBACK
+// ==========================================
+
+/**
+ * Reads LLM_PROVIDER_PRIORITY from env (comma-separated, e.g. "anthropic,openai,openrouter").
+ * Only returns providers that have a valid API key configured.
+ */
+export function getProviderPriority(): LLMProvider[] {
+  const raw = process.env.LLM_PROVIDER_PRIORITY ?? "openrouter,openai,anthropic";
+  const all = raw
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter((s): s is LLMProvider =>
+      ["openai", "openrouter", "anthropic"].includes(s)
+    );
+
+  // Filter to only providers that have an API key present
+  return all.filter((p) => {
+    switch (p) {
+      case "openai":
+        return !!process.env.OPENAI_API_KEY;
+      case "openrouter":
+        return !!process.env.OPENROUTER_API_KEY;
+      case "anthropic":
+        return !!process.env.ANTHROPIC_API_KEY;
+      default:
+        return false;
+    }
+  });
+}
+
+/**
+ * Build an ArticleLLM handle for a specific provider.
+ * Returns `null` if the required API key is missing.
+ */
+function buildProviderLLM(provider: LLMProvider): ArticleLLM | null {
+  switch (provider) {
+    case "openrouter": {
+      const key = process.env.OPENROUTER_API_KEY;
+      if (!key) return null;
+      return {
+        kind: "openai-compatible",
+        client: new OpenAI({
+          apiKey: key,
+          baseURL: "https://openrouter.ai/api/v1",
+        }),
+        model: process.env.OPENROUTER_MODEL || AI_MODELS.TEXT_MODEL,
+        supportsJsonMode: false,
+        provider: "openrouter",
+      };
+    }
+
+    case "openai": {
+      const key = process.env.OPENAI_API_KEY;
+      if (!key) return null;
+      return {
+        kind: "openai-compatible",
+        client: new OpenAI({ apiKey: key }),
+        model: process.env.OPENAI_ARTICLE_MODEL ?? "gpt-4o-mini",
+        supportsJsonMode: true,
+        provider: "openai",
+      };
+    }
+
+    case "anthropic": {
+      const key = process.env.ANTHROPIC_API_KEY;
+      if (!key) return null;
+      return {
+        kind: "anthropic",
+        client: new Anthropic({ apiKey: key }),
+        model: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-20250514",
+        supportsJsonMode: false,
+        provider: "anthropic",
+      };
+    }
+
+    default:
+      return null;
+  }
+}
+
+/**
+ * Returns the highest-priority LLM provider that has a valid API key.
+ * Priority is controlled by the `LLM_PROVIDER_PRIORITY` env var.
+ *
+ * Example env: `LLM_PROVIDER_PRIORITY=anthropic,openai,openrouter`
+ *   → tries Anthropic first, then OpenAI, then OpenRouter.
+ *
+ * For backward compatibility, also exports a `client` and `model` shape.
+ */
+export function getArticleLLM(): ArticleLLM {
+  const providers = getProviderPriority();
+  for (const p of providers) {
+    const llm = buildProviderLLM(p);
+    if (llm) return llm;
   }
 
+  // Ultimate fallback: OpenAI with whatever key is present (may be empty)
   return {
+    kind: "openai-compatible",
     client: new OpenAI({ apiKey: process.env.OPENAI_API_KEY ?? "" }),
     model: process.env.OPENAI_ARTICLE_MODEL ?? "gpt-4o-mini",
     supportsJsonMode: true,
+    provider: "openai",
   };
 }
+
+/**
+ * Returns ALL configured providers in priority order.
+ * Useful for implementing fallback chains where callers want to try
+ * the next provider when the primary one fails.
+ */
+export function getAllConfiguredProviders(): ArticleLLM[] {
+  const providers = getProviderPriority();
+  return providers
+    .map((p) => buildProviderLLM(p))
+    .filter((llm): llm is ArticleLLM => llm !== null);
+}
+
+// ==========================================
+// UNIFIED CHAT COMPLETION
+// ==========================================
+
+export type ChatMessage = {
+  role: "system" | "user" | "assistant";
+  content: string;
+};
+
+export type ChatCompletionOptions = {
+  messages: ChatMessage[];
+  model?: string;
+  jsonMode?: boolean;
+  temperature?: number;
+  maxTokens?: number;
+};
+
+/**
+ * Unified chat completion that works with any provider (OpenAI-compatible or Anthropic native).
+ * Handles the API differences transparently. Supports automatic fallback
+ * to the next provider on failure.
+ */
+export async function chatCompletion(
+  options: ChatCompletionOptions
+): Promise<{ content: string; model: string; provider: LLMProvider }> {
+  const providers = getAllConfiguredProviders();
+  if (providers.length === 0) {
+    throw new Error(
+      "No LLM providers configured. Set at least one of: OPENAI_API_KEY, OPENROUTER_API_KEY, ANTHROPIC_API_KEY"
+    );
+  }
+
+  let lastError: Error | null = null;
+
+  for (const llm of providers) {
+    try {
+      const result = await callProvider(llm, options);
+      return result;
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      console.warn(
+        `[LLM] Provider "${llm.provider}" failed: ${lastError.message}. Trying next...`
+      );
+    }
+  }
+
+  throw lastError ?? new Error("All LLM providers failed");
+}
+
+/**
+ * Execute a chat completion against a specific provider.
+ */
+async function callProvider(
+  llm: ArticleLLM,
+  options: ChatCompletionOptions
+): Promise<{ content: string; model: string; provider: LLMProvider }> {
+  const model = options.model ?? llm.model;
+
+  if (llm.kind === "anthropic") {
+    // Native Anthropic Messages API
+    const systemMsg = options.messages.find((m) => m.role === "system");
+    const nonSystemMessages = options.messages
+      .filter((m) => m.role !== "system")
+      .map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      }));
+
+    const response = await llm.client.messages.create({
+      model,
+      max_tokens: options.maxTokens ?? 4096,
+      ...(systemMsg ? { system: systemMsg.content } : {}),
+      messages: nonSystemMessages,
+      ...(options.temperature !== undefined
+        ? { temperature: options.temperature }
+        : {}),
+    });
+
+    const textBlock = response.content.find((b) => b.type === "text");
+    return {
+      content: textBlock?.text ?? "",
+      model,
+      provider: "anthropic",
+    };
+  }
+
+  // OpenAI-compatible path (OpenAI, OpenRouter)
+  const completion = await llm.client.chat.completions.create({
+    model,
+    messages: options.messages,
+    ...(options.jsonMode && llm.supportsJsonMode
+      ? { response_format: { type: "json_object" as const } }
+      : {}),
+    ...(options.temperature !== undefined
+      ? { temperature: options.temperature }
+      : {}),
+    ...(options.maxTokens ? { max_tokens: options.maxTokens } : {}),
+  });
+
+  return {
+    content: completion.choices[0]?.message?.content ?? "",
+    model,
+    provider: llm.provider,
+  };
+}
+
+// ==========================================
+// IMAGE GENERATION (unchanged — uses OpenRouter)
+// ==========================================
 
 /** Context passed to the image generator for richer, article-relevant images. */
 export type ImageContext = {

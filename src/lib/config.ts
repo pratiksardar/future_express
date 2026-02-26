@@ -4,13 +4,18 @@
  * Every env var the app reads is declared here, with defaults where appropriate.
  * Import `config` from this module instead of reading `process.env` directly.
  *
+ * SECURITY (Vercel / any deployment):
+ * - Next.js exposes ONLY env vars prefixed with NEXT_PUBLIC_ to the browser bundle.
+ * - All keys below that are NOT NEXT_PUBLIC_ are server-only and must stay that way.
+ * - Never add NEXT_PUBLIC_ to: *_API_KEY, *_SECRET, *_PRIVATE_KEY, DATABASE_URL, or any LLM/API secret.
+ *
  * Calling `config` is lazy — the schema is parsed once on first access — so
  * importing this module in tests or build scripts won't throw if env is missing.
  */
 import { z } from "zod";
 
 // ────────────────────────────────────────────────
-// Schema
+// Schema (server-only keys have no NEXT_PUBLIC_ prefix)
 // ────────────────────────────────────────────────
 
 const envSchema = z.object({
@@ -19,20 +24,25 @@ const envSchema = z.object({
         .string()
         .default("postgresql://postgres:postgres@localhost:5432/future_express"),
 
-    // ── LLM / Article Generation ──
+    // ── LLM / Article Generation (server-only; never use NEXT_PUBLIC_ for these) ──
     OPENAI_API_KEY: z.string().optional(),
     OPENAI_ARTICLE_MODEL: z.string().default("gpt-4o-mini"),
     OPENROUTER_API_KEY: z.string().optional(),
     OPENROUTER_MODEL: z.string().default("arcee-ai/trinity-mini:free"),
+    ANTHROPIC_API_KEY: z.string().optional(),
+    ANTHROPIC_MODEL: z.string().default("claude-sonnet-4-20250514"),
 
-    // ── Web Research ──
+    // ── LLM Provider Priority (comma-separated, first = primary, rest = fallbacks) ──
+    LLM_PROVIDER_PRIORITY: z.string().default("openrouter,openai,anthropic"),
+
+    // ── Web Research (server-only) ──
     TAVILY_API_KEY: z.string().optional(),
     BRAVE_API_KEY: z.string().optional(),
 
-    // ── Kalshi ──
+    // ── Kalshi (server-only) ──
     KALSHI_API_KEY: z.string().optional(),
 
-    // ── Affiliate Links ──
+    // ── Public / safe for client (NEXT_PUBLIC_ is inlined into browser bundle) ──
     NEXT_PUBLIC_POLYMARKET_AFFILIATE_URL: z
         .string()
         .default("https://polymarket.com"),
@@ -44,16 +54,14 @@ const envSchema = z.object({
     NEXT_PUBLIC_SUBSTACK_URL: z.string().optional(),
     NEXT_PUBLIC_BEEHIIV_URL: z.string().optional(),
 
-    // ── Ads ──
     NEXT_PUBLIC_AD_SLOT_ID: z.string().optional(),
 
-    // ── App URL ──
     NEXT_PUBLIC_APP_URL: z.string().default("http://localhost:3000"),
 
-    // ── Uniswap ──
+    // ── Uniswap (server-only; used in API routes only) ──
     UNISWAP_API_KEY: z.string().optional(),
 
-    // ── Base / CDP ──
+    // ── Base / CDP (server-only; private keys never in client) ──
     USE_BASE_SEPOLIA: z
         .string()
         .default("false")
@@ -69,11 +77,11 @@ const envSchema = z.object({
     CDP_API_KEY_NAME: z.string().optional(),
     CDP_API_KEY_PRIVATE_KEY: z.string().optional(),
 
-    // ── Editor Wallet ──
+    // ── Editor Wallet (server-only) ──
     EDITOR_WALLET_ADDRESS: z.string().optional(),
     MIN_EDITOR_BALANCE_ETH: z.string().default("0.001"),
 
-    // ── Hedera ──
+    // ── Hedera (server-only) ──
     HEDERA_ACCOUNT_ID: z.string().optional(),
     HEDERA_PRIVATE_KEY: z.string().optional(),
 });

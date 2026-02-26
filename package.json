@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "check-env": "npx tsx scripts/check-env-secrets.ts",
     "api:dev": "npx tsx --watch services/api/index.ts",
     "generate-news:local": "npx tsx --env-file=.env scripts/run-edition.ts",
     "generate-news:neon": "npx tsx --env-file=.env.vercel scripts/run-edition.ts"
@@ -16,6 +17,7 @@
   "dependencies": {
     "@0glabs/0g-serving-broker": "^0.7.1",
     "@ai-sdk/openai": "^3.0.30",
+    "@anthropic-ai/sdk": "^0.78.0",
     "@coinbase/coinbase-sdk": "^0.25.0",
     "@coinbase/onchainkit": "^1.1.2",
     "@hashgraph/sdk": "^2.80.0",

@@ -118,6 +118,18 @@ export const editionArticles = pgTable("edition_articles", {
   position: integer("position").notNull(),
 });
 
+/** Social playcards: one image per article for Twitter/social. Admin-only access via xyzzy. */
+export const playcards = pgTable("playcards", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  articleId: uuid("article_id")
+    .notNull()
+    .unique()
+    .references(() => articles.id, { onDelete: "cascade" }),
+  /** Path under public, e.g. /playcards/abc-123-slug.png */
+  filePath: varchar("file_path", { length: 512 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const quicknodeStreams = pgTable("quicknode_streams", {
   id: uuid("id").primaryKey().defaultRandom(),
   streamId: varchar("stream_id", { length: 255 }),
@@ -166,6 +178,8 @@ export type Article = typeof articles.$inferSelect;
 export type NewArticle = typeof articles.$inferInsert;
 export type Edition = typeof editions.$inferSelect;
 export type EditionArticle = typeof editionArticles.$inferSelect;
+export type Playcard = typeof playcards.$inferSelect;
+export type NewPlaycard = typeof playcards.$inferInsert;
 export type QuicknodeStream = typeof quicknodeStreams.$inferSelect;
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type ApiUsageLogEntry = typeof apiUsageLog.$inferSelect;

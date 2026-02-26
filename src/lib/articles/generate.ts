@@ -6,7 +6,7 @@ import { articles, markets, editions, editionArticles } from "@/lib/db/schema";
 import { eq, desc, and, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { searchWeb } from "./research";
 import { buildArticlePrompt } from "./prompts";
-import { getArticleLLM, generateArticleImage } from "./llm";
+import { chatCompletion, generateArticleImage } from "./llm";
 import { get0GAIResponse } from "@/lib/zeroG/client";
 import { matchScore } from "@/lib/ingestion/normalize";
 import { loggers, createPipelineLogger } from "@/lib/logger";
@@ -76,7 +76,6 @@ export async function generateArticleForMarket(
     .join("\n\n");
 
   const prompt = buildArticlePrompt(market, researchContext, newsAngle);
-  const { client, model, supportsJsonMode } = getArticleLLM();
 
   try {
     // Decentralized AI Inference via 0G Compute Network
@@ -254,20 +253,19 @@ export async function runEditionPipeline(limit = 30): Promise<{
   let generated = 0;
   let failed = 0;
 
-  // Ask the Editor-in-Chief for layout and assignments
-  const { client, model, supportsJsonMode } = getArticleLLM();
+  // Ask the Editor-in-Chief for layout and assignments (uses priority-ordered LLM with fallbacks)
   let layoutDecisions: { marketId: string; position: number; requiresImage?: boolean; newsAngle?: string }[] = [];
   try {
     const editorPrompt = buildEditorPersonaPrompt(topMarkets);
-    const editorCompletion = await client.chat.completions.create({
-      model,
+    const editorResult = await chatCompletion({
       messages: [{ role: "user", content: editorPrompt }],
-      ...(supportsJsonMode && { response_format: { type: "json_object" } as const }),
+      jsonMode: true,
       temperature: 0.7,
     });
 
-    let raw = editorCompletion.choices[0]?.message?.content ?? "{}";
-    if (!supportsJsonMode) raw = extractJson(raw);
+    let raw = editorResult.content;
+    raw = extractJson(raw);
+    loggers.articles.info({ provider: editorResult.provider, model: editorResult.model }, "Editor persona LLM responded");
     try {
       const parsed = JSON.parse(raw);
       if (parsed && Array.isArray(parsed.layout)) {
@@ -317,6 +315,22 @@ export async function runEditionPipeline(limit = 30): Promise<{
     }
   }
 
+  // Social media agent: generate playcards for Twitter/social sharing (admin-only via xyzzy)
+  let playcardsResult: { generated: number; failed: number; errors: string[] } | undefined;
+  if (generated > 0) {
+    try {
+      const { runSocialAgentForEdition } = await import("@/lib/articles/socialAgent");
+      playcardsResult = await runSocialAgentForEdition(editionId);
+      loggers.articles.info(
+        { editionId, playcards: playcardsResult.generated },
+        "Social playcards generated"
+      );
+    } catch (err) {
+      loggers.articles.warn({ err, editionId }, "Social playcard generation failed");
+      playcardsResult = { generated: 0, failed: 0, errors: [String(err)] };
+    }
+  }
+
   // Post-Edition: Autonomous Sub-wallet 8021 tracking execution payment
   // This physically transacts on Base Mainnet to pay "Publishing Royalties" / overhead
   // using the 8021 tracker format exactly as specified by the bounty
@@ -333,7 +347,14 @@ export async function runEditionPipeline(limit = 30): Promise<{
     loggers.cdp.warn({ err }, "Could not log 8021 tx");
   }
 
-  return { editionId, volumeNumber: edition?.volumeNumber ?? nextVolume, generated, failed, errors };
+  return {
+    editionId,
+    volumeNumber: edition?.volumeNumber ?? nextVolume,
+    generated,
+    failed,
+    errors,
+    playcards: playcardsResult,
+  };
 }
 
 /**

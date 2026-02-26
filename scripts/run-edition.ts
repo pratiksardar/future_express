@@ -51,7 +51,7 @@ async function main() {
         if (activeMarketsCount === 0) {
             console.log("⚠️ No active markets in DB. The ingestion might have failed or filtered everything out.");
         } else if (edition.generated === 0) {
-            console.log("⚠️ 0 articles generated. Make sure OPENAI_API_KEY or OPENROUTER_API_KEY is configured in your .env");
+            console.log("⚠️ 0 articles generated. Make sure at least one LLM key is set: OPENAI_API_KEY, OPENROUTER_API_KEY, or ANTHROPIC_API_KEY");
         }
 
         console.log("\n🎉 Script complete!");

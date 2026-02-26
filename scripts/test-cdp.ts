@@ -4,7 +4,7 @@ dotenv.config();
 import { ethers } from "ethers";
 
 async function testCDP() {
-    const cdpKey = process.env.NEXT_PUBLIC_CDP_CLIENT_API_KEY;
+    const cdpKey = process.env.CDP_CLIENT_API_KEY;
 
     console.log("=== CDP Configuration Check ===");
     console.log("CDP Client API Key present:", !!cdpKey);

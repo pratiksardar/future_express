@@ -15,7 +15,7 @@ export const maxDuration = 300;
  * 2. Ingest Polymarket + Kalshi data (unless ?ingest=false)
  * 3. Create a new edition and generate articles for top 10–15 trending markets.
  * POST to trigger manually.
- * Ensure OPENAI_API_KEY or OPENROUTER_API_KEY is set for article generation.
+ * Ensure OPENAI_API_KEY, OPENROUTER_API_KEY, or ANTHROPIC_API_KEY is set for article generation.
  */
 export async function GET(req: Request) {
   try {
@@ -56,7 +56,7 @@ export async function GET(req: Request) {
         activeMarketsCount === 0 && !skipIngest
           ? "No active markets in DB after ingest. Try POST /api/ingest first, then POST /api/cron/edition again."
           : edition.generated === 0 && activeMarketsCount > 0
-            ? "Articles need OPENAI_API_KEY or OPENROUTER_API_KEY in .env."
+            ? "Articles need at least one LLM key in .env: OPENAI_API_KEY, OPENROUTER_API_KEY, or ANTHROPIC_API_KEY."
             : undefined,
     });
   } catch (e) {
