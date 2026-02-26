@@ -9,6 +9,8 @@ import { ImageResponse } from "next/og";
 export type PlaycardPayload = {
   headline: string;
   subheadline?: string | null;
+  /** First N chars of article body for card content (more than subheadline). */
+  bodyExcerpt?: string | null;
   /** Optional article image URL (data URI only in OG runtime). */
   imageUrl?: string | null;
   slug: string;
@@ -49,7 +51,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 const CTA_URL = "future-express.vercel.app";
 
 /**
- * Generates a PNG playcard in collectible-card style with CTA.
+ * Generates a PNG playcard. With image: hero + headline + body excerpt. Without image: bigger headline + more body content. CTA at bottom.
  */
 export async function generatePlaycardResponse(
   payload: PlaycardPayload,
@@ -63,6 +65,17 @@ export async function generatePlaycardResponse(
     (payload.category && CATEGORY_LABELS[payload.category]) ||
     payload.category ||
     "";
+  const bodyText =
+    payload.bodyExcerpt ||
+    (payload.subheadline
+      ? (payload.subheadline.length > 380
+          ? payload.subheadline.slice(0, 377) + "…"
+          : payload.subheadline)
+      : "");
+
+  const headlineSize = hasImage ? 30 : 40;
+  const imageAreaHeight = hasImage ? 260 : 0;
+  const brandingBarHeight = hasImage ? 0 : 44;
 
   return new ImageResponse(
     (
@@ -79,7 +92,6 @@ export async function generatePlaycardResponse(
           padding: BORDER_WIDTH,
         }}
       >
-        {/* Card outer frame (Pokemon-card style: dark border + gold accent) */}
         <div
           style={{
             width: "100%",
@@ -92,7 +104,6 @@ export async function generatePlaycardResponse(
             overflow: "hidden",
           }}
         >
-          {/* Inner gold stripe */}
           <div
             style={{
               width: "100%",
@@ -105,7 +116,6 @@ export async function generatePlaycardResponse(
               overflow: "hidden",
             }}
           >
-            {/* Card face */}
             <div
               style={{
                 flex: 1,
@@ -116,50 +126,49 @@ export async function generatePlaycardResponse(
                 overflow: "hidden",
               }}
             >
-              {/* Art / image area (top of card) */}
-              <div
-                style={{
-                  width: "100%",
-                  height: 280,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  overflow: "hidden",
-                  backgroundColor: "#ede7d9",
-                }}
-              >
-                {hasImage && imageSrc ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
+              {hasImage && imageSrc ? (
+                <div
+                  style={{
+                    width: "100%",
+                    height: imageAreaHeight,
+                    overflow: "hidden",
+                    display: "flex",
+                  }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={imageSrc}
                     alt=""
                     width={1200}
-                    height={280}
+                    height={imageAreaHeight}
                     style={{
                       objectFit: "cover",
                       width: "100%",
                       height: "100%",
                     }}
                   />
-                ) : (
+                </div>
+              ) : (
+                brandingBarHeight > 0 && (
                   <div
                     style={{
+                      width: "100%",
+                      height: brandingBarHeight,
                       display: "flex",
-                      flexDirection: "column",
                       alignItems: "center",
                       justifyContent: "center",
+                      backgroundColor: "#ede7d9",
                       color: COLORS.inkLight,
-                      fontSize: 14,
+                      fontSize: 12,
                       textTransform: "uppercase",
                       letterSpacing: "0.15em",
                     }}
                   >
                     The Future Express
                   </div>
-                )}
-              </div>
+                )
+              )}
 
-              {/* Text area (name + description) */}
               <div
                 style={{
                   flex: 1,
@@ -167,8 +176,9 @@ export async function generatePlaycardResponse(
                   flexDirection: "column",
                   paddingLeft: CARD_PADDING,
                   paddingRight: CARD_PADDING,
-                  paddingTop: 20,
-                  paddingBottom: 16,
+                  paddingTop: 16,
+                  paddingBottom: 12,
+                  minHeight: 0,
                 }}
               >
                 {categoryLabel && (
@@ -186,10 +196,9 @@ export async function generatePlaycardResponse(
                   </div>
                 )}
 
-                {/* Headline — card “name” */}
                 <h1
                   style={{
-                    fontSize: 32,
+                    fontSize: headlineSize,
                     fontWeight: 800,
                     color: COLORS.ink,
                     lineHeight: 1.2,
@@ -198,25 +207,23 @@ export async function generatePlaycardResponse(
                     display: "flex",
                   }}
                 >
-                  {payload.headline.length > 88
-                    ? payload.headline.slice(0, 85) + "…"
+                  {payload.headline.length > (hasImage ? 85 : 72)
+                    ? payload.headline.slice(0, (hasImage ? 82 : 69)) + "…"
                     : payload.headline}
                 </h1>
 
-                {payload.subheadline && (
+                {bodyText && (
                   <p
                     style={{
-                      fontSize: 18,
+                      fontSize: 15,
                       color: COLORS.inkMedium,
-                      lineHeight: 1.35,
+                      lineHeight: 1.4,
                       margin: 0,
                       display: "flex",
                       flex: 1,
                     }}
                   >
-                    {payload.subheadline.length > 120
-                      ? payload.subheadline.slice(0, 117) + "…"
-                      : payload.subheadline}
+                    {bodyText}
                   </p>
                 )}
 
@@ -225,7 +232,7 @@ export async function generatePlaycardResponse(
                     style={{
                       fontSize: 11,
                       color: COLORS.inkLight,
-                      marginTop: 8,
+                      marginTop: 6,
                       margin: 0,
                     }}
                   >
@@ -234,7 +241,6 @@ export async function generatePlaycardResponse(
                 )}
               </div>
 
-              {/* CTA bar (bottom of card) */}
               <div
                 style={{
                   width: "100%",

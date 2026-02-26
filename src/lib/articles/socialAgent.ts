@@ -16,15 +16,19 @@ export type GeneratePlaycardResult = {
 };
 
 /**
- * Generates a playcard image for an article and stores it in the DB (imageUrl as data URI).
- * Same storage approach as news article images: image data in the database.
+ * Generates a playcard image for an article in the given edition and stores it in the DB.
+ * Ties the playcard to the same volume/edition as the newspaper.
  */
-export async function generateAndSavePlaycard(articleId: string): Promise<GeneratePlaycardResult> {
+export async function generateAndSavePlaycard(
+  articleId: string,
+  editionId: string
+): Promise<GeneratePlaycardResult> {
   const [row] = await db
     .select({
       id: articles.id,
       headline: articles.headline,
       subheadline: articles.subheadline,
+      body: articles.body,
       slug: articles.slug,
       category: articles.category,
       imageUrl: articles.imageUrl,
@@ -46,9 +50,14 @@ export async function generateAndSavePlaycard(articleId: string): Promise<Genera
       })
     : undefined;
 
+  const bodyExcerpt = row.body
+    ? row.body.replace(/\s+/g, " ").trim().slice(0, 580) + (row.body.length > 580 ? "…" : "")
+    : null;
+
   const payload: PlaycardPayload = {
     headline: row.headline,
     subheadline: row.subheadline,
+    bodyExcerpt: bodyExcerpt || null,
     imageUrl: row.imageUrl,
     slug: row.slug,
     category: row.category,
@@ -62,9 +71,9 @@ export async function generateAndSavePlaycard(articleId: string): Promise<Genera
 
     await db
       .insert(playcards)
-      .values({ articleId: row.id, imageUrl: dataUri })
+      .values({ editionId, articleId: row.id, imageUrl: dataUri })
       .onConflictDoUpdate({
-        target: playcards.articleId,
+        target: [playcards.editionId, playcards.articleId],
         set: { imageUrl: dataUri },
       });
 
@@ -96,7 +105,7 @@ export async function runSocialAgentForEdition(editionId: string): Promise<{
   let failed = 0;
 
   for (const { articleId } of links) {
-    const result = await generateAndSavePlaycard(articleId);
+    const result = await generateAndSavePlaycard(articleId, editionId);
     if (result.success) generated++;
     else {
       failed++;

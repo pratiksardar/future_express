@@ -17,6 +17,7 @@ type PlaycardItem = {
 export function AdminPlaycardsPanel() {
   const [visible, setVisible] = useState(false);
   const [playcards, setPlaycards] = useState<PlaycardItem[]>([]);
+  const [volumeNumber, setVolumeNumber] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,6 +29,7 @@ export function AdminPlaycardsPanel() {
       if (!res.ok) throw new Error("Failed to load playcards");
       const data = await res.json();
       setPlaycards(data.playcards ?? []);
+      setVolumeNumber(data.volumeNumber ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
     } finally {
@@ -76,6 +78,11 @@ export function AdminPlaycardsPanel() {
             style={{ fontFamily: "var(--font-display)" }}
           >
             Social playcards — download for Twitter & social
+            {volumeNumber != null && (
+              <span className="ml-2 font-normal text-[var(--color-ink-light)]">
+                (Volume {volumeNumber})
+              </span>
+            )}
           </h2>
           <button
             type="button"

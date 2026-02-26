@@ -9,6 +9,7 @@ import {
   pgEnum,
   jsonb,
   date,
+  unique,
 } from "drizzle-orm/pg-core";
 
 export const marketStatusEnum = pgEnum("market_status", [
@@ -118,19 +119,25 @@ export const editionArticles = pgTable("edition_articles", {
   position: integer("position").notNull(),
 });
 
-/** Social playcards: one image per article for Twitter/social. Admin-only access via xyzzy. */
-export const playcards = pgTable("playcards", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  articleId: uuid("article_id")
-    .notNull()
-    .unique()
-    .references(() => articles.id, { onDelete: "cascade" }),
-  /** Image stored in DB (data URI), same pattern as articles.imageUrl. Served via /api/playcards/[id]/image */
-  imageUrl: text("image_url"),
-  /** Legacy: path under public (optional when imageUrl is set) */
-  filePath: varchar("file_path", { length: 512 }),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+/** Social playcards: one image per article per edition. Tied to same volume as newspaper. Admin-only via xyzzy. */
+export const playcards = pgTable(
+  "playcards",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    editionId: uuid("edition_id")
+      .notNull()
+      .references(() => editions.id, { onDelete: "cascade" }),
+    articleId: uuid("article_id")
+      .notNull()
+      .references(() => articles.id, { onDelete: "cascade" }),
+    /** Image stored in DB (data URI). Served via /api/playcards/[id]/image */
+    imageUrl: text("image_url"),
+    /** Legacy: path under public (optional when imageUrl is set) */
+    filePath: varchar("file_path", { length: 512 }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [unique("playcards_edition_article").on(t.editionId, t.articleId)]
+);
 
 export const quicknodeStreams = pgTable("quicknode_streams", {
   id: uuid("id").primaryKey().defaultRandom(),
