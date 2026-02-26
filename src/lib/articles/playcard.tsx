@@ -53,6 +53,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const CTA_URL = "future-express.vercel.app";
+const MASTHEAD_TAGLINE = "Tomorrow's News, Today's Odds";
 
 /**
  * Generates a PNG playcard. With image: hero + headline + body excerpt. Without image: bigger headline + more body content. CTA at bottom.
@@ -76,22 +77,29 @@ export async function generatePlaycardResponse(
           ? payload.subheadline.slice(0, 377) + "…"
           : payload.subheadline)
       : "");
-  // Square (no image) has less room — use shorter excerpt
+  // Square (no image): allow more body text so content fills the card
   const bodyText = rawBody
     ? hasImage
       ? rawBody.length > 420
         ? rawBody.slice(0, 417) + "…"
         : rawBody
-      : rawBody.length > 280
-        ? rawBody.slice(0, 277) + "…"
+      : rawBody.length > 420
+        ? rawBody.slice(0, 417) + "…"
         : rawBody
     : "";
 
-  const headlineSize = hasImage ? 28 : 36;
+  const headlineSize = hasImage ? 28 : 52;
+  const bodyFontSize = hasImage ? 16 : 22;
+  const categoryFontSize = hasImage ? 10 : 14;
+  const dateFontSize = hasImage ? 11 : 14;
   const imageAreaHeight = hasImage ? 500 : 0; // 4:5 card: hero takes ~500px
-  const brandingBarHeight = hasImage ? 0 : 40;
+  const mastheadHeight = hasImage ? 0 : 92; // Newspaper-style header for square card
   const width = hasImage ? WIDTH_WITH_IMAGE : SIZE_SQUARE;
   const height = hasImage ? HEIGHT_4_5 : SIZE_SQUARE;
+  const contentPadding = hasImage ? 24 : 36;
+  const ctaFontSize = hasImage ? 16 : 20;
+  const ctaPaddingVertical = hasImage ? 14 : 18;
+  const showMasthead = mastheadHeight > 0;
 
   return new ImageResponse(
     (
@@ -165,22 +173,88 @@ export async function generatePlaycardResponse(
                   />
                 </div>
               ) : (
-                brandingBarHeight > 0 && (
+                showMasthead && (
                   <div
                     style={{
                       width: "100%",
-                      height: brandingBarHeight,
+                      height: mastheadHeight,
                       display: "flex",
+                      flexDirection: "column",
                       alignItems: "center",
                       justifyContent: "center",
-                      backgroundColor: "#ede7d9",
-                      color: COLORS.inkLight,
-                      fontSize: 12,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.15em",
+                      backgroundColor: COLORS.cardBg,
+                      borderBottom: `2px solid ${COLORS.ink}`,
                     }}
                   >
-                    The Future Express
+                    {/* Newspaper-style double border frame (like Masthead.tsx) */}
+                    <div
+                      style={{
+                        margin: "6px 12px",
+                        border: `3px solid ${COLORS.ink}`,
+                        padding: 2,
+                        display: "flex",
+                        flexDirection: "column",
+                      }}
+                    >
+                      <div
+                        style={{
+                          border: `1px solid ${COLORS.ink}`,
+                          padding: "8px 12px",
+                          display: "flex",
+                          flexDirection: "column",
+                        }}
+                      >
+                        {/* Top row: date + tagline */}
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            borderBottom: `2px solid ${COLORS.ink}`,
+                            paddingBottom: 6,
+                            marginBottom: 8,
+                            fontSize: 9,
+                            fontWeight: 700,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.15em",
+                            color: COLORS.inkLight,
+                          }}
+                        >
+                          <span>{payload.publishedAt ?? "—"}</span>
+                          <span style={{ fontSize: 8, letterSpacing: "0.1em" }}>
+                            {MASTHEAD_TAGLINE}
+                          </span>
+                        </div>
+                        {/* Main title: THE FUTURE EXPRESS */}
+                        <div
+                          style={{
+                            textAlign: "center",
+                            fontSize: 26,
+                            fontWeight: 900,
+                            color: COLORS.ink,
+                            letterSpacing: "-0.01em",
+                            lineHeight: 1.1,
+                          }}
+                        >
+                          THE FUTURE EXPRESS
+                        </div>
+                        {/* Bottom rule + volume line */}
+                        <div
+                          style={{
+                            borderTop: `2px solid ${COLORS.ink}`,
+                            paddingTop: 6,
+                            marginTop: 8,
+                            fontSize: 8,
+                            fontWeight: 700,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.2em",
+                            color: COLORS.inkLight,
+                          }}
+                        >
+                          The Independent Intelligence of the Future
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )
               )}
@@ -190,22 +264,22 @@ export async function generatePlaycardResponse(
                   flex: 1,
                   display: "flex",
                   flexDirection: "column",
-                  paddingLeft: CARD_PADDING,
-                  paddingRight: CARD_PADDING,
-                  paddingTop: 16,
-                  paddingBottom: 12,
+                  paddingLeft: contentPadding,
+                  paddingRight: contentPadding,
+                  paddingTop: hasImage ? 16 : 24,
+                  paddingBottom: hasImage ? 12 : 20,
                   minHeight: 0,
                 }}
               >
                 {categoryLabel && (
                   <div
                     style={{
-                      fontSize: 10,
+                      fontSize: categoryFontSize,
                       fontWeight: 700,
                       letterSpacing: "0.2em",
                       textTransform: "uppercase",
                       color: COLORS.inkLight,
-                      marginBottom: 6,
+                      marginBottom: hasImage ? 6 : 10,
                     }}
                   >
                     {categoryLabel}
@@ -219,21 +293,21 @@ export async function generatePlaycardResponse(
                     color: COLORS.ink,
                     lineHeight: 1.2,
                     margin: 0,
-                    marginBottom: 8,
+                    marginBottom: hasImage ? 8 : 14,
                     display: "flex",
                   }}
                 >
-                  {payload.headline.length > (hasImage ? 90 : 65)
-                    ? payload.headline.slice(0, (hasImage ? 87 : 62)) + "…"
+                  {payload.headline.length > (hasImage ? 90 : 75)
+                    ? payload.headline.slice(0, (hasImage ? 87 : 72)) + "…"
                     : payload.headline}
                 </h1>
 
                 {bodyText && (
                   <p
                     style={{
-                      fontSize: 15,
+                      fontSize: bodyFontSize,
                       color: COLORS.inkMedium,
-                      lineHeight: 1.4,
+                      lineHeight: 1.38,
                       margin: 0,
                       display: "flex",
                       flex: 1,
@@ -246,9 +320,9 @@ export async function generatePlaycardResponse(
                 {payload.publishedAt && (
                   <p
                     style={{
-                      fontSize: 11,
+                      fontSize: dateFontSize,
                       color: COLORS.inkLight,
-                      marginTop: 6,
+                      marginTop: 10,
                       margin: 0,
                     }}
                   >
@@ -264,15 +338,15 @@ export async function generatePlaycardResponse(
                   alignItems: "center",
                   justifyContent: "center",
                   backgroundColor: COLORS.ctaBg,
-                  paddingTop: 14,
-                  paddingBottom: 14,
-                  paddingLeft: 20,
-                  paddingRight: 20,
+                  paddingTop: ctaPaddingVertical,
+                  paddingBottom: ctaPaddingVertical,
+                  paddingLeft: 24,
+                  paddingRight: 24,
                 }}
               >
                 <span
                   style={{
-                    fontSize: 16,
+                    fontSize: ctaFontSize,
                     fontWeight: 700,
                     color: COLORS.ctaText,
                     letterSpacing: "0.02em",
