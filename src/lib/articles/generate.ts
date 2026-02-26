@@ -173,6 +173,7 @@ export async function runEditionPipeline(limit = 30): Promise<{
   generated: number;
   failed: number;
   errors: string[];
+  playcards?: { generated: number; failed: number; errors: string[] };
 }> {
   // Base Mainnet: Self-Sustaining Protocol Solvency Check
   const balanceCheck = await getAgentBalance();
