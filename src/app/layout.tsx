@@ -46,6 +46,12 @@ export const metadata: Metadata = {
   title: "The Future Express — Tomorrow's News, Today's Odds",
   description:
     "The newspaper of record for what hasn't happened yet. Prediction market intelligence from Polymarket and Kalshi, in researched articles.",
+  alternates: {
+    types: {
+      "application/rss+xml": "/feed.xml",
+      "text/markdown": "/llms.txt",
+    },
+  },
 };
 
 export default function RootLayout({

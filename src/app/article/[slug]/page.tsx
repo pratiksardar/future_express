@@ -99,8 +99,37 @@ export default async function ArticlePage({
     .orderBy(desc(articles.publishedAt))
     .limit(3);
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    "headline": article.headline,
+    "description": article.subheadline ?? article.headline,
+    "image": article.imageUrl ? [article.imageUrl] : [],
+    "datePublished": article.publishedAt.toISOString(),
+    "dateModified": article.updatedAt.toISOString(),
+    "author": [{
+      "@type": "Organization",
+      "name": "The Future Express Autonomous Staff",
+      "url": process.env.NEXT_PUBLIC_APP_URL || "https://future-express.vercel.app"
+    }],
+    "publisher": {
+      "@type": "Organization",
+      "name": "The Future Express",
+      "logo": {
+        "@type": "ImageObject",
+        "url": `${process.env.NEXT_PUBLIC_APP_URL || "https://future-express.vercel.app"}/favicon.ico`
+      }
+    },
+    // Custom prop commonly mapped to by AI scrapers: Let them read the raw body fast!
+    "articleBody": article.body
+  };
+
   return (
     <div className="paper-texture min-h-screen">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Masthead compact />
       <SectionNav />
 
