@@ -33,6 +33,7 @@ export async function generateAndSavePlaycard(
       category: articles.category,
       imageUrl: articles.imageUrl,
       publishedAt: articles.publishedAt,
+      probabilityAtPublish: articles.probabilityAtPublish,
     })
     .from(articles)
     .where(eq(articles.id, articleId))
@@ -54,6 +55,10 @@ export async function generateAndSavePlaycard(
     ? row.body.replace(/\s+/g, " ").trim().slice(0, 580) + (row.body.length > 580 ? "…" : "")
     : null;
 
+  const probability = row.probabilityAtPublish
+    ? Math.round(Number(row.probabilityAtPublish) * 100)
+    : null;
+
   const payload: PlaycardPayload = {
     headline: row.headline,
     subheadline: row.subheadline,
@@ -62,6 +67,7 @@ export async function generateAndSavePlaycard(
     slug: row.slug,
     category: row.category,
     publishedAt,
+    probability,
   };
 
   try {
