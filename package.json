@@ -10,7 +10,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check-env": "npx tsx scripts/check-env-secrets.ts",
-    "api:dev": "npx tsx --watch services/api/index.ts",
+    "api:dev": "npx tsx --env-file=.env --watch services/api/index.ts",
+    "worker:ingest": "npx tsx --env-file=.env services/ingestion-worker/index.ts",
+    "worker:edition": "npx tsx --env-file=.env services/edition-worker/index.ts",
+    "worker:breaking": "npx tsx --env-file=.env services/breaking-news-worker/index.ts",
     "generate-news:local": "npx tsx --env-file=.env scripts/run-edition.ts",
     "generate-news:neon": "npx tsx --env-file=.env.vercel scripts/run-edition.ts"
   },

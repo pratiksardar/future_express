@@ -10,6 +10,7 @@ import {
   jsonb,
   date,
   unique,
+  index,
 } from "drizzle-orm/pg-core";
 
 export const marketStatusEnum = pgEnum("market_status", [
@@ -58,7 +59,12 @@ export const markets = pgTable("markets", {
   kalshiEventTicker: varchar("kalshi_event_ticker", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (t) => [
+  index("markets_polymarket_id_idx").on(t.polymarketId),
+  index("markets_kalshi_ticker_idx").on(t.kalshiTicker),
+  index("markets_status_idx").on(t.status),
+  index("markets_category_idx").on(t.category),
+]);
 
 export const probabilitySnapshots = pgTable("probability_snapshots", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -69,7 +75,12 @@ export const probabilitySnapshots = pgTable("probability_snapshots", {
   probability: decimal("probability", { precision: 5, scale: 2 }).notNull(),
   volume: decimal("volume", { precision: 20, scale: 2 }),
   recordedAt: timestamp("recorded_at").defaultNow().notNull(),
-});
+}, (t) => [
+  index("snapshots_market_id_idx").on(t.marketId),
+  index("snapshots_recorded_at_idx").on(t.recordedAt),
+  // Composite index for efficient "market probability over time" lookups
+  index("snapshots_market_recorded_idx").on(t.marketId, t.recordedAt),
+]);
 
 export const articles = pgTable("articles", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -94,7 +105,12 @@ export const articles = pgTable("articles", {
   publishedAt: timestamp("published_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (t) => [
+  index("articles_market_id_idx").on(t.marketId),
+  index("articles_edition_idx").on(t.edition),
+  index("articles_category_idx").on(t.category),
+  index("articles_published_at_idx").on(t.publishedAt),
+]);
 
 export const editions = pgTable("editions", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -107,7 +123,10 @@ export const editions = pgTable("editions", {
     { onDelete: "set null" }
   ),
   publishedAt: timestamp("published_at").defaultNow().notNull(),
-});
+}, (t) => [
+  index("editions_date_idx").on(t.date),
+  index("editions_volume_idx").on(t.volumeNumber),
+]);
 
 export const editionArticles = pgTable("edition_articles", {
   editionId: uuid("edition_id")
@@ -117,7 +136,10 @@ export const editionArticles = pgTable("edition_articles", {
     .notNull()
     .references(() => articles.id, { onDelete: "cascade" }),
   position: integer("position").notNull(),
-});
+}, (t) => [
+  index("edition_articles_edition_id_idx").on(t.editionId),
+  index("edition_articles_article_id_idx").on(t.articleId),
+]);
 
 /** Social playcards: one image per article per edition. Tied to same volume as newspaper. Admin-only via xyzzy. */
 export const playcards = pgTable(
@@ -178,7 +200,10 @@ export const apiUsageLog = pgTable("api_usage_log", {
   paymentMethod: paymentMethodEnum("payment_method").notNull(),
   txHash: varchar("tx_hash", { length: 66 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (t) => [
+  index("api_usage_key_id_idx").on(t.apiKeyId),
+  index("api_usage_created_at_idx").on(t.createdAt),
+]);
 
 export type Market = typeof markets.$inferSelect;
 export type NewMarket = typeof markets.$inferInsert;
