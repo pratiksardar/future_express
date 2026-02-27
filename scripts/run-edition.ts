@@ -39,6 +39,16 @@ async function main() {
         console.log(`- Edition ID: ${edition.editionId ?? 'None'}`);
         console.log(`- Articles Generated: ${edition.generated}`);
         console.log(`- Articles Failed: ${edition.failed}`);
+        if (edition.playcards) {
+            console.log(`- Playcards Generated: ${edition.playcards.generated}`);
+            console.log(`- Playcards Failed: ${edition.playcards.failed}`);
+            if (edition.playcards.errors.length > 0) {
+                console.log("- Playcard Errors:");
+                for (const err of edition.playcards.errors) {
+                    console.log(`  • ${err}`);
+                }
+            }
+        }
 
         const countResult = await db
             .select({ value: count() })
