@@ -127,11 +127,6 @@ function EditorialCard({
   const ctaPrimary = resolveCtaText(payload);
   const categoryLabel = (payload.category && CATEGORY_LABELS[payload.category]) || payload.category || "";
   const categoryAccent = (payload.category && CATEGORY_ACCENT[payload.category]) || C.red;
-  const mastheadTitleSize = format === "twitter" ? 34 : 38;
-  const mastheadPadX = format === "twitter" ? 34 : 40;
-  const mastheadMetaSize = format === "twitter" ? 10 : 11;
-  const displayVolume = "1";
-  const displayIssue = "1";
 
   const headline = truncWordBoundary(payload.headline, scale.headlineMax);
   const dekSource = payload.subheadline || payload.bodyExcerpt || "";
@@ -165,86 +160,32 @@ function EditorialCard({
 
       <div
         style={{
-          padding: `10px ${mastheadPadX}px 10px ${mastheadPadX}px`,
-          borderBottom: `3px solid ${C.ink}`,
+          display: "flex",
+          flexDirection: "column",
+          padding: `16px ${scale.padX}px 14px ${scale.padX}px`,
+          borderBottom: `2px solid ${C.ink}`,
           backgroundColor: C.paper,
           flexShrink: 0,
         }}
       >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontSize: 13, letterSpacing: "0.16em", color: C.inkLight, textTransform: "uppercase" }}>
+            {payload.publishedAt ?? ""}
+          </span>
+          <span style={{ fontSize: 12, letterSpacing: "0.14em", color: C.inkLight, textTransform: "uppercase" }}>
+            {TAGLINE}
+          </span>
+        </div>
         <div
           style={{
-            border: `3px solid ${C.ink}`,
-            padding: 3,
-            display: "flex",
-            flexDirection: "column",
-            width: "100%",
+            marginTop: 10,
+            fontSize: format === "twitter" ? 46 : 44,
+            fontWeight: 900,
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
           }}
         >
-          <div
-            style={{
-              border: `1px solid ${C.ink}`,
-              padding: format === "twitter" ? "8px 14px" : "10px 16px",
-              display: "flex",
-              flexDirection: "column",
-              width: "100%",
-              backgroundColor: C.paper,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                borderBottom: `2px solid ${C.ink}`,
-                paddingBottom: 7,
-                marginBottom: 8,
-              }}
-            >
-              <span style={{ fontSize: mastheadMetaSize, fontWeight: 700, letterSpacing: "0.14em", color: C.inkLight, textTransform: "uppercase" }}>
-                {payload.publishedAt ?? ""}
-              </span>
-              <span style={{ fontSize: mastheadMetaSize - 1, letterSpacing: "0.1em", color: C.inkLight, textTransform: "uppercase" }}>
-                {TAGLINE}
-              </span>
-              <span style={{ fontSize: mastheadMetaSize, fontWeight: 700, letterSpacing: "0.14em", color: C.inkLight, textTransform: "uppercase" }}>
-                VOL. {displayVolume}
-              </span>
-            </div>
-
-            <div
-              style={{
-                textAlign: "center",
-                fontSize: mastheadTitleSize,
-                fontWeight: 900,
-                color: C.ink,
-                letterSpacing: "0.02em",
-                textTransform: "uppercase",
-                lineHeight: 1,
-                marginTop: 2,
-              }}
-            >
-              {PAPER_NAME}
-            </div>
-
-            <div
-              style={{
-                borderTop: `2px solid ${C.ink}`,
-                paddingTop: 7,
-                marginTop: 8,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              <span style={{ fontSize: mastheadMetaSize - 1, fontWeight: 700, letterSpacing: "0.12em", color: C.inkLight, textTransform: "uppercase" }}>
-                VOL. {displayVolume} — NO. {displayIssue}
-              </span>
-              <span style={{ fontSize: mastheadMetaSize - 1, fontWeight: 700, letterSpacing: "0.1em", color: C.inkLight, textTransform: "uppercase" }}>
-                Price: 50¢
-              </span>
-            </div>
-          </div>
+          {PAPER_NAME}
         </div>
       </div>
 

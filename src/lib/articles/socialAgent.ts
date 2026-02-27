@@ -7,7 +7,7 @@
 import { db } from "@/lib/db";
 import { articles, editionArticles, playcards } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { generatePlaycardResponse, resolveCtaVariant, type PlaycardPayload } from "./playcard";
+import { generatePlaycardResponse, resolveCtaVariant, type PlaycardPayload } from "@/lib/articles/playcard";
 import { loggers } from "@/lib/logger";
 
 export type GeneratePlaycardResult = {
