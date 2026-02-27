@@ -332,7 +332,7 @@ function EditorialCard({
             <p
               style={{
                 margin: 0,
-                fontSize: scale.body * 2,
+                fontSize: scale.body,
                 lineHeight: 1.48,
                 color: C.inkSoft,
                 overflow: "hidden",
