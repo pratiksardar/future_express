@@ -107,12 +107,12 @@ function resolveCtaText(payload: Pick<PlaycardPayload, "slug" | "headline" | "ct
 
 function scaleFor(format: PlaycardFormat) {
   if (format === "twitter") {
-    return { headline: 68, dek: 28, body: 21, meta: 15, padX: 56, padY: 36, headlineMax: 95, bodyMax: 220 };
+    return { headline: 68, dek: 35, body: 28, meta: 15, padX: 56, padY: 36, headlineMax: 95, bodyMax: 220 };
   }
   if (format === "instagram") {
-    return { headline: 72, dek: 22, body: 18, meta: 14, padX: 48, padY: 34, headlineMax: 120, bodyMax: 360 };
+    return { headline: 72, dek: 30, body: 25, meta: 14, padX: 48, padY: 34, headlineMax: 120, bodyMax: 360 };
   }
-  return { headline: 76, dek: 22, body: 17, meta: 13, padX: 48, padY: 32, headlineMax: 140, bodyMax: 500 };
+  return { headline: 76, dek: 30, body: 25, meta: 13, padX: 48, padY: 32, headlineMax: 140, bodyMax: 500 };
 }
 
 function EditorialCard({
@@ -133,6 +133,7 @@ function EditorialCard({
   const dek = truncWordBoundary(dekSource, format === "twitter" ? 150 : 190);
   const bodySource = payload.bodyExcerpt || payload.subheadline || "";
   const body = truncWordBoundary(bodySource, scale.bodyMax);
+  const bodyFontSize = payload.bodyExcerpt ? scale.dek : scale.body;
   const dropCap = body ? body.charAt(0) : "";
   const bodyRest = body ? body.slice(1) : "";
 
@@ -162,30 +163,83 @@ function EditorialCard({
         style={{
           display: "flex",
           flexDirection: "column",
-          padding: `16px ${scale.padX}px 14px ${scale.padX}px`,
+          padding: `12px ${scale.padX}px 10px ${scale.padX}px`,
           borderBottom: `2px solid ${C.ink}`,
           backgroundColor: C.paper,
           flexShrink: 0,
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: 13, letterSpacing: "0.16em", color: C.inkLight, textTransform: "uppercase" }}>
-            {payload.publishedAt ?? ""}
-          </span>
-          <span style={{ fontSize: 12, letterSpacing: "0.14em", color: C.inkLight, textTransform: "uppercase" }}>
-            {TAGLINE}
-          </span>
-        </div>
         <div
           style={{
-            marginTop: 10,
-            fontSize: format === "twitter" ? 46 : 44,
-            fontWeight: 900,
-            letterSpacing: "0.04em",
-            textTransform: "uppercase",
+            border: `3px solid ${C.ink}`,
+            padding: 3,
+            display: "flex",
+            flexDirection: "column",
           }}
         >
-          {PAPER_NAME}
+          <div
+            style={{
+              border: `1px solid ${C.ink}`,
+              padding: "8px 14px 10px 14px",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                borderBottom: `2px solid ${C.ink}`,
+                paddingBottom: 7,
+                marginBottom: 8,
+              }}
+            >
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", color: C.inkLight, textTransform: "uppercase" }}>
+                {payload.publishedAt ?? ""}
+              </span>
+              <span style={{ fontSize: 11, letterSpacing: "0.08em", color: C.inkLight, fontStyle: "italic" }}>
+                The Independent Intelligence of the Future
+              </span>
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", color: C.inkLight, textTransform: "uppercase" }}>
+                Vol. 1
+              </span>
+            </div>
+
+            <div
+              style={{
+                textAlign: "center",
+                fontSize: format === "twitter" ? 54 : 50,
+                fontWeight: 900,
+                lineHeight: 1,
+                letterSpacing: "0.03em",
+                textTransform: "uppercase",
+                textShadow: "1px 1px 0 rgba(0,0,0,0.08)",
+              }}
+            >
+              {PAPER_NAME}
+            </div>
+
+            <div
+              style={{
+                marginTop: 8,
+                borderTop: `2px solid ${C.ink}`,
+                borderBottom: `1px solid ${C.ink}`,
+                paddingTop: 5,
+                paddingBottom: 5,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: C.inkLight }}>
+                Vol. 1 — No. 1
+              </span>
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: C.inkLight }}>
+                {TAGLINE}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -273,7 +327,7 @@ function EditorialCard({
             <p
               style={{
                 margin: 0,
-                fontSize: scale.body,
+                fontSize: bodyFontSize,
                 lineHeight: 1.48,
                 color: C.inkSoft,
                 overflow: "hidden",
