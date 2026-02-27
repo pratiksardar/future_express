@@ -16,6 +16,8 @@ export type PlaycardPayload = {
   slug: string;
   category?: string;
   publishedAt?: string;
+  volumeNumber?: number | null;
+  issueNumber?: number | null;
   probability?: number | null;
   format?: PlaycardFormat;
   ctaVariant?: CTAVariant;
@@ -134,6 +136,8 @@ function EditorialCard({
   const bodySource = payload.bodyExcerpt || payload.subheadline || "";
   const body = truncWordBoundary(bodySource, scale.bodyMax);
   const bodyFontSize = payload.bodyExcerpt ? scale.dek : scale.body;
+  const volumeNumber = payload.volumeNumber ?? 1;
+  const issueNumber = payload.issueNumber ?? 1;
   const dropCap = body ? body.charAt(0) : "";
   const bodyRest = body ? body.slice(1) : "";
 
@@ -202,7 +206,7 @@ function EditorialCard({
                 The Independent Intelligence of the Future
               </span>
               <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", color: C.inkLight, textTransform: "uppercase" }}>
-                Vol. 1
+                Vol. {volumeNumber}
               </span>
             </div>
 
@@ -233,7 +237,7 @@ function EditorialCard({
               }}
             >
               <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: C.inkLight }}>
-                Vol. 1 — No. 1
+                Vol. {volumeNumber} — No. {issueNumber}
               </span>
               <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: C.inkLight }}>
                 {TAGLINE}

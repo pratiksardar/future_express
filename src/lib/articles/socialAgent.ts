@@ -5,7 +5,7 @@
  */
 
 import { db } from "@/lib/db";
-import { articles, editionArticles, playcards } from "@/lib/db/schema";
+import { articles, editionArticles, editions, playcards } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { generatePlaycardResponse, resolveCtaVariant, type PlaycardPayload } from "@/lib/articles/playcard";
 import { loggers } from "@/lib/logger";
@@ -29,6 +29,12 @@ export async function generateAndSavePlaycard(
   articleId: string,
   editionId: string
 ): Promise<GeneratePlaycardResult> {
+  const [editionRow] = await db
+    .select({ volumeNumber: editions.volumeNumber, publishedAt: editions.publishedAt })
+    .from(editions)
+    .where(eq(editions.id, editionId))
+    .limit(1);
+
   const [row] = await db
     .select({
       id: articles.id,
@@ -65,6 +71,10 @@ export async function generateAndSavePlaycard(
     ? Math.round(Number(row.probabilityAtPublish))
     : null;
 
+  const issueNumber = editionRow?.publishedAt
+    ? new Date(editionRow.publishedAt).getUTCDate()
+    : null;
+
   const payload: PlaycardPayload = {
     headline: row.headline,
     subheadline: row.subheadline,
@@ -73,6 +83,8 @@ export async function generateAndSavePlaycard(
     slug: row.slug,
     category: row.category,
     publishedAt,
+    volumeNumber: editionRow?.volumeNumber ?? null,
+    issueNumber,
     probability,
   };
 
