@@ -491,7 +491,7 @@ function InstagramCard({
   const prob = payload.probability ?? null;
   const ctaPrimary = resolveCta(payload);
   // Portrait with image: hero occupies top portion
-  const heroH = format === "portrait" && hasImage ? 520 : 0;
+  const heroH = format === "portrait" && hasImage ? 420 : 0;
   const isPortraitWithImage = format === "portrait" && hasImage;
 
   return (
@@ -518,6 +518,44 @@ function InstagramCard({
         }}
       />
 
+      {/* ── Masthead strip for portrait+image (always visible at top) ── */}
+      {isPortraitWithImage && (
+        <div
+          style={{
+            width: "100%",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "12px 32px",
+            borderBottom: `2px solid ${C.ink}`,
+            backgroundColor: C.paper,
+            flexShrink: 0,
+          }}
+        >
+          <span
+            style={{
+              fontSize: 18,
+              fontWeight: 900,
+              color: C.ink,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+            }}
+          >
+            {PAPER_NAME}
+          </span>
+          <span
+            style={{
+              fontSize: 11,
+              color: C.inkLight,
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+            }}
+          >
+            {payload.publishedAt ?? ""}
+          </span>
+        </div>
+      )}
+
       {/* ── Hero image for portrait ── */}
       {isPortraitWithImage && imageSrc && (
         <div
@@ -542,18 +580,6 @@ function InstagramCard({
               height: "100%",
             }}
           />
-          {/* Fade bottom of image into paper */}
-          <div
-            style={{
-              position: "absolute",
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: 120,
-              background: `linear-gradient(to bottom, transparent, ${C.paper})`,
-              display: "flex",
-            }}
-          />
         </div>
       )}
 
@@ -563,7 +589,7 @@ function InstagramCard({
           flex: 1,
           display: "flex",
           flexDirection: "column",
-          padding: isPortraitWithImage ? "24px 48px 0 48px" : "36px 48px 0 48px",
+          padding: isPortraitWithImage ? "18px 48px 0 48px" : "36px 48px 0 48px",
           position: "relative",
         }}
       >
@@ -667,42 +693,6 @@ function InstagramCard({
                 </div>
               </div>
             </div>
-          </div>
-        )}
-
-        {/* When portrait+image: compact masthead strip */}
-        {isPortraitWithImage && (
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 16,
-              paddingBottom: 12,
-              borderBottom: `2px solid ${C.ink}`,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 18,
-                fontWeight: 900,
-                color: C.ink,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-              }}
-            >
-              {PAPER_NAME}
-            </span>
-            <span
-              style={{
-                fontSize: 11,
-                color: C.inkLight,
-                letterSpacing: "0.12em",
-                textTransform: "uppercase",
-              }}
-            >
-              {payload.publishedAt ?? ""}
-            </span>
           </div>
         )}
 
@@ -985,14 +975,14 @@ export async function generatePlaycardResponse(
   payload: PlaycardPayload,
   _options?: { baseUrl?: string },
 ): Promise<Response> {
-  const hasImage = Boolean(
-    payload.imageUrl && (payload.imageUrl.startsWith("data:image") || /^https?:\/\//i.test(payload.imageUrl)),
-  );
+  const hasDataImage = Boolean(payload.imageUrl && payload.imageUrl.startsWith("data:image"));
+  const hasRemoteImage = Boolean(payload.imageUrl && /^https?:\/\//i.test(payload.imageUrl));
+  const hasImage = hasDataImage || hasRemoteImage;
   const imageSrc = hasImage ? payload.imageUrl! : null;
 
   // Resolve format
   const format: PlaycardFormat =
-    payload.format ?? (hasImage ? "portrait" : "instagram");
+    payload.format ?? (hasDataImage ? "portrait" : hasRemoteImage ? "twitter" : "instagram");
 
   const { w, h } = DIMS[format];
 
