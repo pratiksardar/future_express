@@ -7,7 +7,7 @@
 import { db } from "@/lib/db";
 import { articles, editionArticles, playcards } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { generatePlaycardResponse, type PlaycardPayload } from "./playcard";
+import { generatePlaycardResponse, resolveCtaVariant, type PlaycardPayload } from "./playcard";
 import { loggers } from "@/lib/logger";
 
 export type GeneratePlaycardResult = {
@@ -76,6 +76,13 @@ export async function generateAndSavePlaycard(
     probability,
   };
 
+  const ctaVariant = resolveCtaVariant({
+    slug: payload.slug,
+    headline: payload.headline,
+    ctaVariant: payload.ctaVariant,
+  });
+  const ctaMode = process.env.PLAYCARD_CTA_MODE === "test" ? "test" : "winner";
+
   try {
     const response = await generatePlaycardResponse(payload);
     const buffer = Buffer.from(await response.arrayBuffer());
@@ -89,7 +96,10 @@ export async function generateAndSavePlaycard(
         set: { imageUrl: dataUri },
       });
 
-    loggers.articles.info({ articleId }, "Playcard generated and stored in DB");
+    loggers.articles.info(
+      { articleId, editionId, ctaVariant, ctaMode },
+      "Playcard generated and stored in DB"
+    );
     return { success: true };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

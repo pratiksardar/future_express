@@ -27,7 +27,11 @@ export type PlaycardPayload = {
   probability?: number | null;
   /** Social format override. Auto-detected when omitted. */
   format?: PlaycardFormat;
+  /** Optional CTA variant override for A/B testing. */
+  ctaVariant?: CTAVariant;
 };
+
+export type CTAVariant = "A" | "B" | "C";
 
 // ─── Dimensions ──────────────────────────────────────────────────────────────
 const DIMS: Record<PlaycardFormat, { w: number; h: number }> = {
@@ -76,10 +80,47 @@ const CATEGORY_LABELS: Record<string, string> = {
 const CTA_DOMAIN  = "future-express.vercel.app";
 const PAPER_NAME  = "THE FUTURE EXPRESS";
 const TAGLINE     = "Tomorrow's News · Today's Odds";
+const WINNER_CTA_VARIANT: CTAVariant = "C";
+const CTA_TEST_MODE = process.env.PLAYCARD_CTA_MODE === "test";
+const CTA_VARIANTS: Record<CTAVariant, string> = {
+  A: "See Why Markets Moved",
+  B: "Get the Full Odds Breakdown",
+  C: "What Happens Next?",
+};
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function trunc(s: string, max: number) {
   return s.length > max ? s.slice(0, max - 1) + "…" : s;
+}
+
+function truncWordBoundary(s: string, max: number) {
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max - 1);
+  const lastSpace = cut.lastIndexOf(" ");
+  if (lastSpace <= Math.floor(max * 0.6)) return cut + "…";
+  return cut.slice(0, lastSpace) + "…";
+}
+
+function stableHash(s: string): number {
+  let hash = 0;
+  for (let index = 0; index < s.length; index++) {
+    hash = (hash * 31 + s.charCodeAt(index)) | 0;
+  }
+  return Math.abs(hash);
+}
+
+export function resolveCtaVariant(payload: Pick<PlaycardPayload, "slug" | "headline" | "ctaVariant">): CTAVariant {
+  if (payload.ctaVariant) return payload.ctaVariant;
+  if (!CTA_TEST_MODE) return WINNER_CTA_VARIANT;
+
+  const variants: CTAVariant[] = ["A", "B", "C"];
+  const picked = variants[stableHash(payload.slug || payload.headline) % variants.length];
+  return picked;
+}
+
+export function resolveCta(payload: Pick<PlaycardPayload, "slug" | "headline" | "ctaVariant">): string {
+  const variant = resolveCtaVariant(payload);
+  return CTA_VARIANTS[variant];
 }
 
 function probLabel(p: number) {
@@ -115,6 +156,7 @@ function TwitterCard({
 }) {
   const { w, h } = DIMS.twitter;
   const prob = payload.probability ?? null;
+  const ctaPrimary = resolveCta(payload);
 
   return (
     <div
@@ -296,7 +338,7 @@ function TwitterCard({
               overflow: "hidden",
             }}
           >
-            {trunc(payload.headline, hasImage ? 105 : 120)}
+            {truncWordBoundary(payload.headline, hasImage ? 105 : 120)}
           </h1>
 
           {bodyText && (
@@ -312,7 +354,7 @@ function TwitterCard({
                 overflow: "hidden",
               }}
             >
-              {trunc(bodyText, 220)}
+              {truncWordBoundary(bodyText, 220)}
             </p>
           )}
         </div>
@@ -324,6 +366,7 @@ function TwitterCard({
             justifyContent: "space-between",
             alignItems: "flex-end",
             marginTop: 28,
+            gap: 24,
           }}
         >
           {prob !== null ? (
@@ -338,6 +381,7 @@ function TwitterCard({
                 paddingBottom: 10,
                 paddingLeft: 18,
                 paddingRight: 18,
+                flexShrink: 0,
               }}
             >
               <span
@@ -360,7 +404,7 @@ function TwitterCard({
                     letterSpacing: "0.12em",
                   }}
                 >
-                  Market Probability
+                  Market Odds
                 </span>
                 <span
                   style={{
@@ -386,26 +430,38 @@ function TwitterCard({
               flexDirection: "column",
               alignItems: "flex-end",
               gap: 4,
+              maxWidth: 360,
+              flexShrink: 1,
+              backgroundColor: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.14)",
+              paddingTop: 10,
+              paddingBottom: 10,
+              paddingLeft: 14,
+              paddingRight: 14,
             }}
           >
             <span
               style={{
-                fontSize: 13,
-                color: "rgba(255,255,255,0.4)",
+                fontSize: 14,
+                fontWeight: 700,
+                color: "rgba(255,255,255,0.78)",
                 letterSpacing: "0.04em",
+                textAlign: "right",
+                textTransform: "uppercase",
               }}
             >
-              Read the full story at
+              {ctaPrimary}
             </span>
             <span
               style={{
-                fontSize: 17,
-                fontWeight: 700,
+                fontSize: 19,
+                fontWeight: 900,
                 color: C.goldLight,
                 letterSpacing: "0.04em",
+                textAlign: "right",
               }}
             >
-              {CTA_DOMAIN}
+              ↗ {CTA_DOMAIN}
             </span>
           </div>
         </div>
@@ -413,7 +469,6 @@ function TwitterCard({
     </div>
   );
 }
-
 // ─── Instagram Square / Portrait card ────────────────────────────────────────
 function InstagramCard({
   payload,
@@ -434,6 +489,7 @@ function InstagramCard({
 }) {
   const { w, h } = DIMS[format];
   const prob = payload.probability ?? null;
+  const ctaPrimary = resolveCta(payload);
   // Portrait with image: hero occupies top portion
   const heroH = format === "portrait" && hasImage ? 520 : 0;
   const isPortraitWithImage = format === "portrait" && hasImage;
@@ -699,7 +755,7 @@ function InstagramCard({
             overflow: "hidden",
           }}
         >
-          {trunc(
+          {truncWordBoundary(
             payload.headline,
             format === "instagram" ? (hasImage ? 90 : 105) : 95,
           )}
@@ -731,7 +787,7 @@ function InstagramCard({
               overflow: "hidden",
             }}
           >
-            {trunc(
+            {truncWordBoundary(
               bodyText,
               format === "instagram" ? (hasImage ? 250 : 320) : 280,
             )}
@@ -762,7 +818,7 @@ function InstagramCard({
         >
           <span
             style={{
-              fontSize: 40,
+              fontSize: 42,
               fontWeight: 900,
               color: C.white,
               letterSpacing: "-0.02em",
@@ -784,8 +840,8 @@ function InstagramCard({
             </span>
             <span
               style={{
-                fontSize: 14,
-                fontWeight: 700,
+                fontSize: 15,
+                fontWeight: 900,
                 color: C.white,
                 textTransform: "uppercase",
                 letterSpacing: "0.1em",
@@ -806,6 +862,7 @@ function InstagramCard({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          gap: 20,
           paddingTop: 20,
           paddingBottom: 20,
           paddingLeft: 48,
@@ -820,6 +877,7 @@ function InstagramCard({
             display: "flex",
             alignItems: "center",
             gap: 12,
+            flexShrink: 0,
           }}
         >
           <div
@@ -850,36 +908,47 @@ function InstagramCard({
                 marginTop: 2,
               }}
             >
-              {CTA_DOMAIN}
+              Tomorrow's News
             </span>
           </div>
         </div>
 
-        {/* Right: read more */}
+              Market Odds
         <div
           style={{
             display: "flex",
             flexDirection: "column",
             alignItems: "flex-end",
+            flexShrink: 1,
+            maxWidth: 380,
+            backgroundColor: "rgba(255,255,255,0.08)",
+            border: "1px solid rgba(255,255,255,0.16)",
+            paddingTop: 10,
+            paddingBottom: 10,
+            paddingLeft: 14,
+            paddingRight: 14,
           }}
         >
           <span
             style={{
-              fontSize: 13,
-              color: "rgba(255,255,255,0.5)",
+              fontSize: 14,
+              fontWeight: 700,
+              color: "rgba(255,255,255,0.82)",
               textTransform: "uppercase",
               letterSpacing: "0.18em",
+              textAlign: "right",
             }}
           >
-            Read full story
+            {ctaPrimary}
           </span>
           <span
             style={{
-              fontSize: 16,
-              fontWeight: 700,
+              fontSize: 18,
+              fontWeight: 900,
               color: C.goldLight,
               letterSpacing: "0.06em",
               marginTop: 3,
+              textAlign: "right",
             }}
           >
             ↗ {CTA_DOMAIN}
