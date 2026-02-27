@@ -283,32 +283,32 @@ function TwitterCard({
         <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
           <h1
             style={{
-              fontSize: hasImage ? 54 : 62,
+              fontSize: hasImage ? 48 : 56,
               fontWeight: 900,
               color: C.white,
               lineHeight: 1.1,
               margin: 0,
-              marginBottom: 20,
+              marginBottom: 24,
               letterSpacing: "-0.02em",
               display: "flex",
               flexWrap: "wrap",
             }}
           >
-            {trunc(payload.headline, hasImage ? 110 : 130)}
+            {trunc(payload.headline, hasImage ? 120 : 140)}
           </h1>
 
           {bodyText && (
             <p
               style={{
-                fontSize: 20,
+                fontSize: 22,
                 color: "rgba(255,255,255,0.72)",
-                lineHeight: 1.45,
+                lineHeight: 1.5,
                 margin: 0,
                 display: "flex",
                 flexWrap: "wrap",
               }}
             >
-              {trunc(bodyText, 180)}
+              {trunc(bodyText, 280)}
             </p>
           )}
         </div>
@@ -503,7 +503,7 @@ function InstagramCard({
           flex: 1,
           display: "flex",
           flexDirection: "column",
-          padding: isPortraitWithImage ? "20px 56px 0 56px" : "40px 56px 0 56px",
+          padding: isPortraitWithImage ? "24px 48px 0 48px" : "36px 48px 0 48px",
           position: "relative",
         }}
       >
@@ -682,10 +682,10 @@ function InstagramCard({
         {/* Headline */}
         <h1
           style={{
-            fontSize: format === "instagram" ? (hasImage ? 48 : 58) : 44,
+            fontSize: format === "instagram" ? (hasImage ? 42 : 52) : 40,
             fontWeight: 900,
             color: C.ink,
-            lineHeight: 1.1,
+            lineHeight: 1.15,
             margin: 0,
             marginBottom: 20,
             letterSpacing: "-0.02em",
@@ -695,7 +695,7 @@ function InstagramCard({
         >
           {trunc(
             payload.headline,
-            format === "instagram" ? 100 : 120,
+            format === "instagram" ? 110 : 130,
           )}
         </h1>
 
@@ -714,9 +714,9 @@ function InstagramCard({
         {bodyText && (
           <p
             style={{
-              fontSize: format === "instagram" ? 20 : 19,
+              fontSize: format === "instagram" ? 22 : 21,
               color: C.inkMid,
-              lineHeight: 1.55,
+              lineHeight: 1.6,
               margin: 0,
               display: "flex",
               flexWrap: "wrap",
@@ -725,7 +725,7 @@ function InstagramCard({
           >
             {trunc(
               bodyText,
-              format === "instagram" ? (hasImage ? 260 : 360) : 320,
+              format === "instagram" ? (hasImage ? 380 : 480) : 420,
             )}
           </p>
         )}
@@ -795,10 +795,10 @@ function InstagramCard({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          paddingTop: 24,
-          paddingBottom: 24,
-          paddingLeft: 56,
-          paddingRight: 56,
+          paddingTop: 20,
+          paddingBottom: 20,
+          paddingLeft: 48,
+          paddingRight: 48,
           flexShrink: 0,
         }}
       >

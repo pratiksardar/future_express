@@ -52,11 +52,11 @@ export async function generateAndSavePlaycard(
     : undefined;
 
   const bodyExcerpt = row.body
-    ? row.body.replace(/\s+/g, " ").trim().slice(0, 580) + (row.body.length > 580 ? "…" : "")
+    ? row.body.replace(/\s+/g, " ").trim().slice(0, 800) + (row.body.length > 800 ? "…" : "")
     : null;
 
   const probability = row.probabilityAtPublish
-    ? Math.round(Number(row.probabilityAtPublish) * 100)
+    ? Math.round(Number(row.probabilityAtPublish))
     : null;
 
   const payload: PlaycardPayload = {
