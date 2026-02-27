@@ -15,6 +15,12 @@ export type GeneratePlaycardResult = {
   error?: string;
 };
 
+function getArticleScreenshotUrl(slug: string): string {
+  const appBase = (process.env.NEXT_PUBLIC_APP_URL ?? "https://thefutureexpress.com").replace(/\/$/, "");
+  const articleUrl = `${appBase}/article/${slug}`;
+  return `https://image.thum.io/get/width/1200/crop/675/noanimate/${encodeURIComponent(articleUrl)}`;
+}
+
 /**
  * Generates a playcard image for an article in the given edition and stores it in the DB.
  * Ties the playcard to the same volume/edition as the newspaper.
@@ -63,7 +69,7 @@ export async function generateAndSavePlaycard(
     headline: row.headline,
     subheadline: row.subheadline,
     bodyExcerpt: bodyExcerpt || null,
-    imageUrl: row.imageUrl,
+    imageUrl: row.slug ? getArticleScreenshotUrl(row.slug) : row.imageUrl,
     slug: row.slug,
     category: row.category,
     publishedAt,

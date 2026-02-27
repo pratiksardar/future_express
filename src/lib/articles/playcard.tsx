@@ -292,9 +292,11 @@ function TwitterCard({
               letterSpacing: "-0.02em",
               display: "flex",
               flexWrap: "wrap",
+              maxHeight: hasImage ? 230 : 260,
+              overflow: "hidden",
             }}
           >
-            {trunc(payload.headline, hasImage ? 120 : 140)}
+            {trunc(payload.headline, hasImage ? 105 : 120)}
           </h1>
 
           {bodyText && (
@@ -306,9 +308,11 @@ function TwitterCard({
                 margin: 0,
                 display: "flex",
                 flexWrap: "wrap",
+                maxHeight: 170,
+                overflow: "hidden",
               }}
             >
-              {trunc(bodyText, 280)}
+              {trunc(bodyText, 220)}
             </p>
           )}
         </div>
@@ -682,7 +686,7 @@ function InstagramCard({
         {/* Headline */}
         <h1
           style={{
-            fontSize: format === "instagram" ? (hasImage ? 42 : 52) : 40,
+            fontSize: format === "instagram" ? (hasImage ? 50.4 : 62.4) : 48,
             fontWeight: 900,
             color: C.ink,
             lineHeight: 1.15,
@@ -691,11 +695,13 @@ function InstagramCard({
             letterSpacing: "-0.02em",
             display: "flex",
             flexWrap: "wrap",
+            maxHeight: format === "instagram" ? (hasImage ? 185 : 240) : 185,
+            overflow: "hidden",
           }}
         >
           {trunc(
             payload.headline,
-            format === "instagram" ? 110 : 130,
+            format === "instagram" ? (hasImage ? 90 : 105) : 95,
           )}
         </h1>
 
@@ -714,78 +720,83 @@ function InstagramCard({
         {bodyText && (
           <p
             style={{
-              fontSize: format === "instagram" ? 22 : 21,
+              fontSize: format === "instagram" ? 26.4 : 25.2,
               color: C.inkMid,
               lineHeight: 1.6,
               margin: 0,
               display: "flex",
               flexWrap: "wrap",
               flex: 1,
+              minHeight: 0,
+              overflow: "hidden",
             }}
           >
             {trunc(
               bodyText,
-              format === "instagram" ? (hasImage ? 380 : 480) : 420,
+              format === "instagram" ? (hasImage ? 250 : 320) : 280,
             )}
           </p>
         )}
 
-        {/* Probability badge (inline) */}
-        {prob !== null && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 14,
-              marginTop: 24,
-              paddingTop: 20,
-              paddingBottom: 20,
-              paddingLeft: 24,
-              paddingRight: 24,
-              backgroundColor: C.accent,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 40,
-                fontWeight: 900,
-                color: C.white,
-                letterSpacing: "-0.02em",
-                lineHeight: 1,
-              }}
-            >
-              {prob}%
-            </span>
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              <span
-                style={{
-                  fontSize: 11,
-                  color: "rgba(255,255,255,0.6)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.15em",
-                }}
-              >
-                Market Probability
-              </span>
-              <span
-                style={{
-                  fontSize: 14,
-                  fontWeight: 700,
-                  color: C.white,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.1em",
-                  marginTop: 3,
-                }}
-              >
-                {probLabel(prob)}
-              </span>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* ── Spacer ── */}
       <div style={{ flex: 1, display: "flex" }} />
+
+      {/* Probability bar (anchored above footer) */}
+      {prob !== null && (
+        <div
+          style={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
+            paddingTop: 20,
+            paddingBottom: 20,
+            paddingLeft: 24,
+            paddingRight: 24,
+            backgroundColor: C.accent,
+            flexShrink: 0,
+            borderTop: `1px solid ${C.gold}`,
+          }}
+        >
+          <span
+            style={{
+              fontSize: 40,
+              fontWeight: 900,
+              color: C.white,
+              letterSpacing: "-0.02em",
+              lineHeight: 1,
+            }}
+          >
+            {prob}%
+          </span>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <span
+              style={{
+                fontSize: 11,
+                color: "rgba(255,255,255,0.6)",
+                textTransform: "uppercase",
+                letterSpacing: "0.15em",
+              }}
+            >
+              Market Probability
+            </span>
+            <span
+              style={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: C.white,
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+                marginTop: 3,
+              }}
+            >
+              {probLabel(prob)}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* ── CTA footer ── */}
       <div
@@ -800,6 +811,7 @@ function InstagramCard({
           paddingLeft: 48,
           paddingRight: 48,
           flexShrink: 0,
+          borderTop: "1px solid rgba(255,255,255,0.15)",
         }}
       >
         {/* Left: icon-like bracket + paper name */}
@@ -905,7 +917,7 @@ export async function generatePlaycardResponse(
   _options?: { baseUrl?: string },
 ): Promise<Response> {
   const hasImage = Boolean(
-    payload.imageUrl && payload.imageUrl.startsWith("data:image"),
+    payload.imageUrl && (payload.imageUrl.startsWith("data:image") || /^https?:\/\//i.test(payload.imageUrl)),
   );
   const imageSrc = hasImage ? payload.imageUrl! : null;
 
