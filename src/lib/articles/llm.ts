@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
-import { authorizeX402PaymentForImage } from "@/lib/kite/client";
+import { authorizeX402PaymentForImage } from "@/lib/blockchain/kite/client";
 
 // ==========================================
 // AI MODEL CONFIGURATION

@@ -1,5 +1,5 @@
-import { getQuote } from "../src/lib/uniswap";
-import { getBaseChainConfig } from "../src/lib/uniswap/constants";
+import { getQuote } from "../src/lib/blockchain/uniswap";
+import { getBaseChainConfig } from "../src/lib/blockchain/uniswap/constants";
 
 async function run() {
     const config = getBaseChainConfig();

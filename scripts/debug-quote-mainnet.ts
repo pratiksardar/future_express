@@ -1,4 +1,4 @@
-import { getQuote, createSwap } from "../src/lib/uniswap";
+import { getQuote, createSwap } from "../src/lib/blockchain/uniswap";
 
 async function run() {
     const swapper = "0x0D2e1e3bE6A63A08EaF42c69DaD6900a748B8Ed9";

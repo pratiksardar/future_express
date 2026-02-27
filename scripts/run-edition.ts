@@ -6,7 +6,7 @@ import { runIngestion } from "../src/lib/ingestion";
 import { runEditionPipeline } from "../src/lib/articles/generate";
 import { db } from "../src/lib/db";
 import { markets } from "../src/lib/db/schema";
-import { checkEditorWalletBalance } from "../src/lib/base/editorWallet";
+import { checkEditorWalletBalance } from "../src/lib/blockchain/base/editorWallet";
 import { eq, count } from "drizzle-orm";
 
 async function main() {

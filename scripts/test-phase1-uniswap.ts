@@ -4,8 +4,8 @@
  * Set USE_BASE_SEPOLIA=true in .env for Base Sepolia. Requires UNISWAP_API_KEY.
  */
 import "dotenv/config";
-import { getQuote } from "../src/lib/uniswap";
-import { getBaseChainConfig } from "../src/lib/uniswap/constants";
+import { getQuote } from "../src/lib/blockchain/uniswap";
+import { getBaseChainConfig } from "../src/lib/blockchain/uniswap/constants";
 
 const SWAPPER = process.env.EDITOR_WALLET_ADDRESS ?? "0x0D2e1e3bE6A63A08EaF42c69DaD6900a748B8Ed9";
 const AMOUNT_WEI = "10000000000000000"; // 0.01 ETH

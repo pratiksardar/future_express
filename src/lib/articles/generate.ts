@@ -5,7 +5,7 @@ import { eq, desc, and, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { searchWeb } from "./research";
 import { buildArticlePrompt } from "./prompts";
 import { chatCompletion, generateArticleImage } from "./llm";
-import { get0GAIResponse } from "@/lib/zeroG/client";
+import { get0GAIResponse } from "@/lib/blockchain/zeroG/client";
 import { matchScore } from "@/lib/ingestion/normalize";
 import { loggers, createPipelineLogger } from "@/lib/logger";
 
@@ -174,7 +174,7 @@ export async function generateArticleForMarket(
 }
 
 import { buildEditorPersonaPrompt } from "./prompts";
-import { getAgentBalance, submitAgentTransactionWithBuilderCode } from "@/lib/cdp/client";
+import { getAgentBalance, submitAgentTransactionWithBuilderCode } from "@/lib/blockchain/cdp/client";
 
 /** Creates a new edition and generates short articles for top markets by volume. Runs every 4h. */
 export async function runEditionPipeline(): Promise<{
@@ -296,7 +296,7 @@ export async function runEditionPipeline(): Promise<{
   // Hedera Consensus Service: Log editorial layout for agentic transparency
   if (orderedMarkets.length > 0) {
     try {
-      const { logEditorialDecision } = await import("@/lib/hedera/client");
+      const { logEditorialDecision } = await import("@/lib/blockchain/hedera/client");
       await logEditorialDecision(editionId, orderedMarkets.map(m => m.decision));
     } catch (err) {
       loggers.hedera.warn({ err }, "Hedera integration not imported or failed");

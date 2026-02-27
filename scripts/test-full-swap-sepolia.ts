@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
-import { getQuote, createSwap } from "../src/lib/uniswap/client";
-import { getBaseChainConfig } from "../src/lib/uniswap/constants";
+import { getQuote, createSwap } from "../src/lib/blockchain/uniswap/client";
+import { getBaseChainConfig } from "../src/lib/blockchain/uniswap/constants";
 import "dotenv/config";
 
 async function run() {

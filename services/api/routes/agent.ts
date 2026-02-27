@@ -2,7 +2,7 @@
  * Agent dashboard routes.
  */
 import { Hono } from "hono";
-import { getAgentBalance } from "@/lib/cdp/client";
+import { getAgentBalance } from "@/lib/blockchain/cdp/client";
 import { AGENT_WALLET_ADDRESS } from "@/lib/config";
 import { cache, CacheKeys, CacheTTL } from "@/lib/cache";
 

@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import { getQuote, createSwap } from "../src/lib/uniswap/client";
+import { getQuote, createSwap } from "../src/lib/blockchain/uniswap/client";
 import "dotenv/config";
 
 const NATIVE_ETH = "0x0000000000000000000000000000000000000000";

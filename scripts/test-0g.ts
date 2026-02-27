@@ -1,4 +1,4 @@
-import { get0GAIResponse } from "../src/lib/zeroG/client";
+import { get0GAIResponse } from "../src/lib/blockchain/zeroG/client";
 import "dotenv/config";
 
 async function run() {

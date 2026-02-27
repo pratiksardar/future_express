@@ -1,5 +1,5 @@
-import { getQuote } from "../src/lib/uniswap";
-import { getBaseChainConfig, NATIVE_ETH } from "../src/lib/uniswap/constants";
+import { getQuote } from "../src/lib/blockchain/uniswap";
+import { getBaseChainConfig, NATIVE_ETH } from "../src/lib/blockchain/uniswap/constants";
 
 async function run() {
     process.env.USE_BASE_SEPOLIA = "true";

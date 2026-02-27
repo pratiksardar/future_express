@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAgentBalance, AGENT_WALLET_ADDRESS } from "@/lib/cdp/client";
+import { getAgentBalance, AGENT_WALLET_ADDRESS } from "@/lib/blockchain/cdp/client";
 
 export const dynamic = "force-dynamic";
 

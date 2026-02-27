@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import { submitAgentTransactionWithBuilderCode } from "../src/lib/cdp/client";
+import { submitAgentTransactionWithBuilderCode } from "../src/lib/blockchain/cdp/client";
 
 async function main() {
     console.log("Testing submitAgentTransactionWithBuilderCode...");

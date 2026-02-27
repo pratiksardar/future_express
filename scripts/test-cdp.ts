@@ -65,7 +65,7 @@ async function testCDP() {
     console.log("\n=== getAgentBalance() Integration Test ===");
     try {
         // We need to set the env vars that the CDP client expects
-        const { getAgentBalance } = await import("../src/lib/cdp/client");
+        const { getAgentBalance } = await import("../src/lib/blockchain/cdp/client");
         const result = await getAgentBalance();
         console.log("✅ getAgentBalance() result:", JSON.stringify(result, null, 2));
     } catch (e: any) {

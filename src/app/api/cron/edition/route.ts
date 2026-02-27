@@ -2,7 +2,7 @@ import { runIngestion } from "@/lib/ingestion";
 import { runEditionPipeline } from "@/lib/articles/generate";
 import { db } from "@/lib/db";
 import { markets } from "@/lib/db/schema";
-import { checkEditorWalletBalance } from "@/lib/base/editorWallet";
+import { checkEditorWalletBalance } from "@/lib/blockchain/base/editorWallet";
 import { eq, count } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
