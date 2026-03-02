@@ -155,7 +155,14 @@ export default async function ArticlePage({
         )}
         <p className="text-sm italic text-[var(--color-ink-light)] font-[family-name:var(--font-sub)] mb-6">
           By The Future Express Newsroom ·{" "}
-          {article.publishedAt?.toLocaleDateString?.() ?? new Date(article.publishedAt).toLocaleDateString()} · 5 min read
+          {new Date(article.publishedAt).toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+            timeZoneName: "short",
+          })} · 5 min read
         </p>
 
         <div className="divider-double pt-4" />
@@ -195,6 +202,9 @@ export default async function ArticlePage({
               <div
                 className="text-4xl font-bold font-[family-name:var(--font-data)] mb-1"
                 style={{ color: probColor(prob) }}
+                data-odds={(prob / 100).toFixed(2)}
+                data-odds-label={probLabel(prob)}
+                data-odds-percent={prob}
               >
                 {prob}%
               </div>

@@ -81,6 +81,7 @@ async function getArticlesFallback() {
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://thefutureexpress.com";
   const latestEdition = await getLatestEdition();
   const editionArticlesList = latestEdition?.id
     ? await getArticlesForLatestEdition(latestEdition.id)
@@ -101,8 +102,35 @@ export default async function HomePage() {
   const mastheadEditionLabel =
     volumeLabel && latestEditionLabel ? `${volumeLabel} · ${latestEditionLabel}` : latestEditionLabel;
 
+  // JSON-LD: ItemList for homepage — lets agents parse structured headlines without DOM traversal
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "name": latestEdition ? `The Future Express — Vol. ${latestEdition.volumeNumber ?? ""}` : "The Future Express",
+    "description": "AI-generated prediction market news powered by Polymarket and Kalshi.",
+    "url": appUrl,
+    "numberOfItems": list.length,
+    "itemListElement": list.slice(0, 12).map((a, i) => ({
+      "@type": "ListItem",
+      "position": i + 1,
+      "item": {
+        "@type": "NewsArticle",
+        "headline": a.headline,
+        "description": a.subheadline ?? a.headline,
+        "url": `${appUrl}/article/${a.slug}`,
+        "datePublished": a.publishedAt ? new Date(a.publishedAt).toISOString() : null,
+        "articleSection": a.category,
+        "keywords": `prediction market, ${a.category}, odds ${a.currentProbability ?? a.probabilityAtPublish}%`,
+      },
+    })),
+  };
+
   return (
     <div className="paper-texture min-h-screen">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Masthead
         latestEdition={mastheadEditionLabel}
         volumeNumber={latestEdition?.volumeNumber}
@@ -188,28 +216,30 @@ export default async function HomePage() {
         </section>
 
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 pt-[var(--space-8)]">
-          <div className="md:col-span-1 lg:pr-[var(--space-6)] border-r-0 md:border-r border-[var(--color-rule)] p-4 md:p-5">
-            <h2 className="section-title mb-4">
-              Politics
-            </h2>
-            {rest
-              .filter((a) => a.category === "politics")
-              .slice(0, 3)
-              .map((a) => (
-                <ArticleCard key={a.id} {...a} publishedAt={a.publishedAt?.toISOString()} size="compact" />
-              ))}
-          </div>
-          <div className="md:col-span-1 lg:pr-[var(--space-6)] border-r-0 md:border-r border-[var(--color-rule)] p-4 md:p-5">
-            <h2 className="section-title mb-4">
-              Crypto
-            </h2>
-            {rest
-              .filter((a) => a.category === "crypto")
-              .slice(0, 3)
-              .map((a) => (
-                <ArticleCard key={a.id} {...a} publishedAt={a.publishedAt?.toISOString()} size="compact" />
-              ))}
-          </div>
+          {(() => {
+            const politicsArticles = rest.filter((a) => a.category === "politics").slice(0, 3);
+            if (!politicsArticles.length) return null;
+            return (
+              <div className="md:col-span-1 lg:pr-[var(--space-6)] border-r-0 md:border-r border-[var(--color-rule)] p-4 md:p-5">
+                <h2 className="section-title mb-4">Politics</h2>
+                {politicsArticles.map((a) => (
+                  <ArticleCard key={a.id} {...a} publishedAt={a.publishedAt?.toISOString()} size="compact" />
+                ))}
+              </div>
+            );
+          })()}
+          {(() => {
+            const cryptoArticles = rest.filter((a) => a.category === "crypto").slice(0, 3);
+            if (!cryptoArticles.length) return null;
+            return (
+              <div className="md:col-span-1 lg:pr-[var(--space-6)] border-r-0 md:border-r border-[var(--color-rule)] p-4 md:p-5">
+                <h2 className="section-title mb-4">Crypto</h2>
+                {cryptoArticles.map((a) => (
+                  <ArticleCard key={a.id} {...a} publishedAt={a.publishedAt?.toISOString()} size="compact" />
+                ))}
+              </div>
+            );
+          })()}
           <div className="md:col-span-2 lg:col-span-1 p-4 md:p-5">
             <MarketBriefs />
           </div>

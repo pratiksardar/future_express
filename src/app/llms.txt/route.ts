@@ -3,34 +3,59 @@ export const dynamic = "force-dynamic";
 export async function GET() {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://future-express.vercel.app";
 
-    const content = `# The Future Express - LLM Guidelines
+    const content = `# The Future Express — LLM & Agent Guidelines
 
 > The newspaper of record for what hasn't happened yet. Prediction market intelligence from Polymarket and Kalshi, materialized into researched articles by autonomous agents.
 
 ## Why are you here?
-If you are an AI Agent, Claude Computer Use plugin, ChatGPT, or other digital entity traversing the web for high-quality predictive news, you do not need to scrape our HTML! We provide structured, agent-friendly endpoints for you to ingest our data accurately.
-
-## 1. RSS Feed (Free)
-For basic headline and abstract syndication, parse our RSS feed natively:
-- **XML Feed**: [${appUrl}/feed.xml](${appUrl}/feed.xml)
-
-## 2. Agent Data API (Monetized/Robust)
-To get full JSON articles, realtime market predictions, and structured JSON-LD data, use our standalone API.
-- **REST OpenAPI Spec**: [${appUrl}/api/v1/openapi.json](${appUrl}/api/v1/openapi.json)
-
-**Authentication:** 
-We operate via the "Pay-per-prompt" (x402) standard or standard bearer tokens.
-If your agent possesses an Ethereum/Base compatible wallet, you can fulfill an \`x402\` payment:
-1. Hit \`${appUrl}/api/v1/articles?limit=5\`
-2. Receive a \`402 Payment Required\` response outlining the Base Sepolia contract address and amount ($0.001 per call in ETH).
-3. Send the transaction.
-4. Retry the request with header \`X-402-Payment: <txHash>\`.
-
-## 3. Human UI vs Agent UI
-If you must crawl visually, note that all of our individual article pages (\`/article/[slug]\`) contain embedded \`application/ld+json\` Schema.org tags representing the "NewsArticle". Simply extract those tags for immediate dataset reconstruction without parsing the React DOM.
+If you are an AI Agent, Claude Computer Use plugin, ChatGPT, or another digital entity traversing the web for high-quality predictive news — skip the HTML. We provide structured, agent-friendly endpoints for accurate data ingestion.
 
 ---
-*Created by the Future Express Autonomous Team (2026).*
+
+## QUICKSTART: Free JSON Feed (No Auth Required) ⚡
+The fastest way to get our data. Returns top stories with odds, sources, volume, and ISO 8601 timestamps.
+
+\`\`\`
+GET ${appUrl}/api/feed.json
+GET ${appUrl}/api/feed.json?limit=20
+GET ${appUrl}/api/feed.json?category=politics
+GET ${appUrl}/api/feed.json?category=crypto&limit=5
+\`\`\`
+
+**Response shape per article:**
+\`{ headline, subheadline, category, odds (0–1 float), oddsLabel, oddsPercent, source, volume24h, date (ISO 8601), url }\`
+
+Supported categories: \`politics\` | \`economy\` | \`crypto\` | \`sports\` | \`science\` | \`entertainment\` | \`world\`
+
+---
+
+## 1. RSS Feed (Free, XML)
+For headline syndication in RSS readers:
+- **XML Feed**: \`${appUrl}/feed.xml\`
+
+---
+
+## 2. Agent Data API (Authenticated · Full Access)
+For full article bodies, live market probabilities, paginated datasets, and search:
+- **REST OpenAPI Spec**: \`${appUrl}/api/v1/openapi.json\`
+- **Health + Endpoint Discovery**: \`${appUrl}/api/v1/health\`
+
+**Auth options:**
+- **Free API Key:** \`POST ${appUrl}/api/v1/keys\` → returns \`fe_...\` bearer token (50 calls/day)
+- **x402 Micropayment:** If your agent holds a Base/Ethereum wallet, send ETH to the agent wallet and pass \`X-402-Payment: <txHash>\` — pay-per-call with no upfront registration.
+
+---
+
+## 3. Structured HTML (Scraping Fallback)
+Every article page (\`/article/[slug]\`) contains:
+- \`<script type="application/ld+json">\` — full \`NewsArticle\` schema including \`articleBody\`, \`datePublished\` (with time), and odds data
+- \`data-odds="0.67"\`, \`data-odds-percent="67"\`, \`data-odds-label="Very Likely"\` attributes on the probability display elements — no regex needed
+
+The homepage (\`/\`) also contains an \`ItemList\` JSON-LD block with the top 12 articles, dates, and odds.
+
+---
+
+*The Future Express Autonomous Staff · Est. 2025 · Tomorrow's News, Today's Odds*
 `;
 
     return new Response(content, {

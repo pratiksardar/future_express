@@ -73,11 +73,23 @@ export function ArticleCard({
           <span
             className="text-2xl md:text-3xl font-bold font-[family-name:var(--font-data)] tabular-nums"
             style={{ color: probColor(p) }}
+            data-odds={(p / 100).toFixed(2)}
+            data-odds-label={p >= 70 ? "Very Likely" : p >= 50 ? "Leaning Yes" : p >= 40 ? "Toss-Up" : "Unlikely"}
+            data-odds-percent={p}
           >
             {prob}%
           </span>
           <span className="text-sm italic text-[var(--color-ink-light)] font-[family-name:var(--font-sub)]">
-            By The Future Express · {publishedAt ? new Date(publishedAt).toLocaleDateString() : ""}
+            By The Future Express ·{" "}
+            {publishedAt
+              ? new Date(publishedAt).toLocaleString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              })
+              : ""}
           </span>
         </div>
         {volume24h && (
@@ -103,6 +115,8 @@ export function ArticleCard({
           <span
             className="text-sm font-bold shrink-0 font-[family-name:var(--font-data)] tabular-nums"
             style={{ color: probColor(p) }}
+            data-odds={(p / 100).toFixed(2)}
+            data-odds-percent={p}
           >
             {prob}%
           </span>
@@ -137,11 +151,23 @@ export function ArticleCard({
       <div
         className="inline-block px-2.5 py-1 text-sm font-bold rounded-sm font-[family-name:var(--font-data)] tabular-nums"
         style={{ backgroundColor: "var(--color-paper-cream)", color: probColor(p) }}
+        data-odds={(p / 100).toFixed(2)}
+        data-odds-label={p >= 70 ? "Very Likely" : p >= 50 ? "Leaning Yes" : p >= 40 ? "Toss-Up" : "Unlikely"}
+        data-odds-percent={p}
       >
         {prob}%
       </div>
       <p className="text-xs italic text-[var(--color-ink-light)] mt-2 font-[family-name:var(--font-sub)]">
-        By The Future Express · {publishedAt ? new Date(publishedAt).toLocaleDateString() : ""}
+        By The Future Express ·{" "}
+        {publishedAt
+          ? new Date(publishedAt).toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+          })
+          : ""}
       </p>
     </article>
   );
