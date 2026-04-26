@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEdition } from "@/components/EditionProvider";
 import { useEffect, useState } from "react";
+import PressOrnament from "@/components/PressOrnament";
+import WireDispatchCursor from "@/components/WireDispatchCursor";
 
 function formatDate(d: Date) {
   return d.toLocaleDateString("en-US", {
@@ -21,6 +23,12 @@ function formatShortDate(d: Date) {
   });
 }
 
+function formatDispatchTimestamp(d: Date) {
+  // Compact UTC stamp for the wire-dispatch cursor: 2026-04-26 22:14 UTC
+  const iso = d.toISOString();
+  return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
+}
+
 export function Masthead({ compact, latestEdition, volumeNumber }: { compact?: boolean; latestEdition?: string | null; volumeNumber?: number | null }) {
   const date = formatDate(new Date());
   const shortDate = formatShortDate(new Date());
@@ -28,6 +36,7 @@ export function Masthead({ compact, latestEdition, volumeNumber }: { compact?: b
 
   const displayVolume = volumeNumber ? volumeNumber.toString() : "1";
   const displayIssue = new Date().getDate().toString();
+  const dispatchStamp = formatDispatchTimestamp(new Date());
 
   const [prices, setPrices] = useState<any>(null);
   const [copied, setCopied] = useState(false);
@@ -43,9 +52,16 @@ export function Masthead({ compact, latestEdition, volumeNumber }: { compact?: b
     <header className="bg-[var(--color-paper)] mt-4 mb-6">
       <div className="max-w-[var(--max-width)] mx-auto px-2 sm:px-[var(--space-4)]">
 
-        {/* Main 1880s Broadsheet Boundary */}
-        <div className="border-[4px] border-[var(--color-ink)] p-[3px]">
-          <div className="border-[1px] border-[var(--color-ink)] p-2 sm:p-5">
+        {/* V4 cartouche masthead — replaces the prior 1880s broadsheet boundary
+            with a triple-ruled 1920 NYT plate. Press ornament cycles top-right,
+            wire-dispatch cursor blinks under the tagline. */}
+        <div className="fe-v4-cartouche fe-v4-masthead-shell">
+          <div className="fe-v4-cartouche-inner">
+
+            {/* Press ornament — top-right, hidden on mobile */}
+            <div className="fe-v4-press-ornament" aria-hidden="true">
+              <PressOrnament />
+            </div>
 
             {/* Top Date / Volume Row */}
             <div className="flex justify-between items-center text-[10px] sm:text-xs font-[family-name:var(--font-ui)] uppercase tracking-widest border-b-[2px] border-[var(--color-ink)] pb-3 mb-4 font-bold">
@@ -54,30 +70,31 @@ export function Masthead({ compact, latestEdition, volumeNumber }: { compact?: b
               <span className="opacity-80">VOL. {displayVolume}</span>
             </div>
 
-            {/* Huge Headline Title */}
-            <div className="text-center my-6 sm:my-8">
+            {/* V4 wordmark — italic Playfair black at clamp scale */}
+            <div className="text-center my-4 sm:my-6">
               <Link
                 href="/"
                 className="inline-block focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-blue)]"
+                aria-label="The Future Express — home"
               >
-                <h1
-                  className="text-5xl sm:text-7xl md:text-8xl font-black text-[var(--color-ink)] leading-none"
-                  style={{
-                    fontFamily: "var(--font-display)",
-                    letterSpacing: "-0.01em",
-                    textShadow: "1px 1px 0px rgba(0,0,0,0.1), 2px 2px 0px rgba(0,0,0,0.05)"
-                  }}
-                >
-                  THE FUTURE EXPRESS
+                <h1 className="fe-v4-wordmark">
+                  The Future Express
                 </h1>
               </Link>
             </div>
 
+            {/* Wire-dispatch cursor — blinking terminal cursor with edition meta */}
+            <div className="fe-v4-wire-dispatch">
+              <WireDispatchCursor
+                prefix={`▶ VOL ${displayVolume} · NO ${displayIssue} · DISPATCH READY · ${dispatchStamp} `}
+              />
+            </div>
+
             {/* Sub Issue / Cost Row */}
-            <div className="border-t-[3px] border-b-[1px] border-[var(--color-ink)] py-2 sm:py-3 mb-2 flex flex-wrap justify-between items-center text-[9px] sm:text-xs font-bold uppercase tracking-widest font-[family-name:var(--font-ui)] px-2">
+            <div className="border-t-[3px] border-b-[1px] border-[var(--color-ink)] py-2 sm:py-3 mt-4 mb-2 flex flex-wrap justify-between items-center text-[9px] sm:text-xs font-bold uppercase tracking-widest font-[family-name:var(--font-ui)] px-2">
               <span className="opacity-90">VOL. {displayVolume} — NO. {displayIssue}</span>
-              <span className="hidden md:inline mx-4 opacity-90 overflow-hidden text-ellipsis whitespace-nowrap">
-                SUPPORT INDEPENDENT AI JOURNALISM — SHARE FEEDBACK
+              <span className="hidden md:inline mx-4 opacity-90 overflow-hidden text-ellipsis whitespace-nowrap" style={{ color: "var(--color-accent-gold)" }}>
+                POLYMARKET · KALSHI · LIVE
               </span>
               <button
                 onClick={() => {

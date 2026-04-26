@@ -205,6 +205,113 @@ export const apiUsageLog = pgTable("api_usage_log", {
   index("api_usage_created_at_idx").on(t.createdAt),
 ]);
 
+// ── Accuracy Tracking ──
+
+export const accuracyStatusEnum = pgEnum("accuracy_status", [
+  "pending",
+  "tracking",
+  "resolved",
+  "expired",
+]);
+
+export const marketAccuracy = pgTable("market_accuracy", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  articleId: uuid("article_id")
+    .notNull()
+    .references(() => articles.id, { onDelete: "cascade" })
+    .unique(),
+  marketId: uuid("market_id")
+    .notNull()
+    .references(() => markets.id, { onDelete: "cascade" }),
+  probabilityAtPublish: decimal("probability_at_publish", { precision: 5, scale: 2 }),
+  currentProbability: decimal("current_probability", { precision: 5, scale: 2 }),
+  probabilityDelta: decimal("probability_delta", { precision: 5, scale: 2 }),
+  directionCorrect: integer("direction_correct"), // 1 = correct, 0 = wrong, null = unresolved
+  brierScore: decimal("brier_score", { precision: 5, scale: 4 }),
+  resolutionOutcome: varchar("resolution_outcome", { length: 64 }),
+  status: accuracyStatusEnum("status").notNull().default("pending"),
+  scoredAt: timestamp("scored_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  index("market_accuracy_article_idx").on(t.articleId),
+  index("market_accuracy_market_idx").on(t.marketId),
+  index("market_accuracy_status_idx").on(t.status),
+]);
+
+export const accuracyPeriodEnum = pgEnum("accuracy_period", [
+  "daily",
+  "weekly",
+  "monthly",
+  "all_time",
+]);
+
+export const platformAccuracy = pgTable("platform_accuracy", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  period: accuracyPeriodEnum("period").notNull(),
+  periodStart: date("period_start"),
+  periodEnd: date("period_end"),
+  totalArticles: integer("total_articles").notNull().default(0),
+  resolvedArticles: integer("resolved_articles").notNull().default(0),
+  correctDirectionCount: integer("correct_direction_count").notNull().default(0),
+  avgBrierScore: decimal("avg_brier_score", { precision: 5, scale: 4 }),
+  confidenceScore: integer("confidence_score"), // 0-100
+  categoryBreakdown: jsonb("category_breakdown"),
+  topHits: jsonb("top_hits"),
+  topMisses: jsonb("top_misses"),
+  computedAt: timestamp("computed_at").defaultNow().notNull(),
+}, (t) => [
+  index("platform_accuracy_period_idx").on(t.period),
+  index("platform_accuracy_computed_idx").on(t.computedAt),
+]);
+
+export const accuracyReports = pgTable("accuracy_reports", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  platformAccuracyId: uuid("platform_accuracy_id")
+    .references(() => platformAccuracy.id, { onDelete: "cascade" }),
+  headline: varchar("headline", { length: 256 }).notNull(),
+  narrative: text("narrative").notNull(),
+  grade: varchar("grade", { length: 4 }).notNull(),
+  lesson: text("lesson"),
+  socialSummary: text("social_summary"),
+  publishedAt: timestamp("published_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  index("accuracy_reports_published_idx").on(t.publishedAt),
+]);
+
+// ── Daily Prediction Challenge ──
+
+export const dailyChallenges = pgTable("daily_challenges", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  date: text("date").notNull().unique(), // YYYY-MM-DD
+  marketIds: text("market_ids").array().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const userPredictions = pgTable(
+  "user_predictions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sessionId: text("session_id").notNull(),
+    challengeDate: text("challenge_date").notNull(),
+    marketId: text("market_id").notNull(),
+    predictedProbability: integer("predicted_probability").notNull(), // 0-100
+    actualProbability: integer("actual_probability"), // filled when resolved
+    score: integer("score"), // 0-100
+    submittedAt: timestamp("submitted_at").defaultNow().notNull(),
+  },
+  (t) => [
+    unique("user_predictions_session_date_market").on(
+      t.sessionId,
+      t.challengeDate,
+      t.marketId
+    ),
+    index("user_predictions_session_date_idx").on(t.sessionId, t.challengeDate),
+  ]
+);
+
+// ── Type exports ──
+
 export type Market = typeof markets.$inferSelect;
 export type NewMarket = typeof markets.$inferInsert;
 export type ProbabilitySnapshot = typeof probabilitySnapshots.$inferSelect;
@@ -217,3 +324,9 @@ export type NewPlaycard = typeof playcards.$inferInsert;
 export type QuicknodeStream = typeof quicknodeStreams.$inferSelect;
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type ApiUsageLogEntry = typeof apiUsageLog.$inferSelect;
+export type MarketAccuracy = typeof marketAccuracy.$inferSelect;
+export type PlatformAccuracy = typeof platformAccuracy.$inferSelect;
+export type AccuracyReport = typeof accuracyReports.$inferSelect;
+export type DailyChallenge = typeof dailyChallenges.$inferSelect;
+export type UserPrediction = typeof userPredictions.$inferSelect;
+export type NewUserPrediction = typeof userPredictions.$inferInsert;

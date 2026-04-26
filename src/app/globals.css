@@ -1,29 +1,118 @@
 @import "tailwindcss";
 
-/* Google Fonts - loaded in layout.tsx */
+/*
+ * The Future Express — Token system
+ * Source of truth: docs/design-revamp.md §2 (Token system)
+ * Philosophy: 1920s broadsheet printed by a machine that lives in 2026.
+ * - Paper is warm, matte, slightly off-white (newsprint, not OLED)
+ * - Ink is warm-black, never pure #000
+ * - Dark mode reads like newsprint under a desk lamp (designed theme, not inversion)
+ * - Rules carry hierarchy; shadows are forbidden outside skeleton shimmer
+ * - Motion: transform / opacity / filter only; no spring; no layout animation
+ *
+ * Existing variable names are preserved. New tokens are additions.
+ */
+
+/* Fonts — loaded via next/font in layout.tsx (Playfair, Lora, Newsreader, DM Sans, JetBrains Mono) */
 :root {
-  /* Newsprint (light) */
-  --color-paper: #f5f0e8;
-  --color-paper-warm: #ede7d9;
-  --color-paper-cream: #faf7f0;
-  --color-ink: #1a1a1a;
-  --color-ink-medium: #3d3d3d;
-  --color-ink-light: #6b6b6b;
-  --color-ink-faded: #9b9b9b;
-  --color-rule: #c4b9a8;
-  --color-rule-dark: #8b7e6e;
-  --color-accent-red: #8b2500;
-  --color-accent-blue: #1b3a5c;
-  --color-accent-gold: #b8860b;
-  --color-spot-green: #2d5f2d;
-  --color-spot-red: #8b0000;
+  /* ── Color: Paper (light) — warm, matte, slightly off-white ────────────── */
+  --color-paper:        #f3ede0;   /* primary surface */
+  --color-paper-warm:   #ebe3d2;   /* sunken cards, market briefs */
+  --color-paper-cream:  #faf6ec;   /* raised cards, callouts */
 
+  /* ── Color: Ink (light) — three tints, warm-black, never pure #000 ─────── */
+  --color-ink:          #1a1714;   /* primary type */
+  --color-ink-medium:   #3a352d;   /* body, secondary */
+  --color-ink-light:    #6b6356;   /* meta, captions */
+  --color-ink-faded:    #968d7d;   /* timestamps, micro */
+
+  /* ── Color: Rules — thin, medium, thick, double ────────────────────────── */
+  --color-rule:         #c4b9a8;   /* hairline */
+  --color-rule-dark:    #8b7e6e;   /* medium */
+  --color-rule-heavy:   #1a1714;   /* thick (= ink) */
+
+  /* ── Color: Accents — printed in two passes max ────────────────────────── */
+  --color-accent-red:   #8b2500;   /* breaking, kicker, error */
+  --color-accent-blue:  #1b3a5c;   /* link hover, odds chrome */
+  --color-accent-gold:  #b8860b;   /* spot ornament — masthead rule, awards */
+  --color-spot-green:   #2d5f2d;   /* "very likely" odds */
+  --color-spot-red:     #8b0000;   /* "unlikely" odds */
+
+  /* ── Color: Semantic UI states ─────────────────────────────────────────── */
+  --color-success:      var(--color-spot-green);
+  --color-warning:      #a06a0c;
+  --color-error:        var(--color-spot-red);
+
+  /* ── Typography: stacks ────────────────────────────────────────────────── */
   --font-display: var(--font-playfair), Georgia, "Times New Roman", serif;
-  --font-body: var(--font-lora), Charter, Georgia, serif;
-  --font-sub: var(--font-newsreader), Georgia, serif;
-  --font-ui: var(--font-dm-sans), "Helvetica Neue", Arial, sans-serif;
-  --font-data: var(--font-jetbrains), "Courier New", monospace;
+  --font-body:    var(--font-lora), Charter, Georgia, serif;
+  --font-sub:     var(--font-newsreader), Georgia, serif;
+  --font-ui:      var(--font-dm-sans), "Helvetica Neue", Arial, sans-serif;
+  --font-data:    var(--font-jetbrains), "Courier New", monospace;
 
+  /* ── Typography: feature-settings recipes (consumed via classes) ───────── */
+  --feat-body:     "kern", "liga", "onum";                /* oldstyle figs in body */
+  --feat-display:  "kern", "liga", "lnum", "ss01";        /* lining figs in display */
+  --feat-tabular:  "tnum", "lnum", "zero";                /* tabular lining for odds */
+  --feat-smcp:     "kern", "smcp", "c2sc";                /* small caps for kickers */
+
+  /* ── Type scale: mobile-first (font-size / line-height / tracking) ─────── */
+  /* Mobile values; desktop overrides in @media min-width: 1024px below. */
+  --type-masthead-size:    56px;
+  --type-masthead-lh:      1.0;
+  --type-masthead-track:   -0.01em;
+
+  --type-display-size:     36px;
+  --type-display-lh:       1.05;
+  --type-display-track:    -0.015em;
+
+  /* Aliases the spec also references */
+  --type-display-xl:       var(--type-masthead-size);
+  --type-display-lg:       var(--type-display-size);
+
+  --type-h1-size:          28px;
+  --type-h1-lh:            1.1;
+  --type-h1-track:         -0.01em;
+
+  --type-h2-size:          22px;
+  --type-h2-lh:            1.2;
+  --type-h2-track:         -0.005em;
+
+  --type-h3-size:          18px;
+  --type-h3-lh:            1.3;
+  --type-h3-track:         0;
+
+  --type-headline:         var(--type-h1-size);
+
+  --type-dek-size:         17px;
+  --type-dek-lh:           1.4;
+  --type-dek-track:        0;
+
+  --type-body-size:        17px;     /* never below 17px on mobile */
+  --type-body-lh:          1.62;
+  --type-body-track:       0;
+
+  --type-meta-size:        13px;
+  --type-meta-lh:          1.4;
+  --type-meta-track:       0.06em;
+
+  --type-kicker-size:      11px;
+  --type-kicker-lh:        1.2;
+  --type-kicker-track:     0.18em;
+
+  --type-caption:          var(--type-meta-size);
+
+  --type-micro-size:       10px;
+  --type-micro-lh:         1.3;
+  --type-micro-track:      0.20em;
+
+  --type-micro:            var(--type-micro-size);
+
+  /* Variable-axis hooks (reserved for future variable-serif swap) */
+  --display-wght: 900;
+  --display-opsz: 32;
+
+  /* ── Spacing: existing scale + three additions per §2.5 ────────────────── */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -33,32 +122,104 @@
   --space-7: 48px;
   --space-8: 64px;
   --space-9: 80px;
-  --column-gap: 24px;
+
+  --space-rule:   1px;     /* hairline rule offset */
+  --space-gutter: 24px;    /* column gutter */
+  --space-bleed:  -16px;   /* full-bleed dark callouts on mobile */
+
+  --column-gap: var(--space-gutter);
   --column-rule-width: 1px;
   --max-width: 1280px;
   --article-max-width: 680px;
   --sidebar-width: 300px;
 
-  --border-thin: 1px solid var(--color-rule);
-  --border-double: 3px double var(--color-rule-dark);
-  --border-thick: 3px solid var(--color-ink);
+  /* ── Rule lines (the broadsheet's spine) ───────────────────────────────── */
+  --rule-hair:       1px solid var(--color-rule);
+  --rule-thin:       1px solid var(--color-rule-dark);
+  --rule-medium:     2px solid var(--color-ink);
+  --rule-thick:      4px solid var(--color-ink);
+  --rule-double:     3px double var(--color-rule-dark);
+  --rule-double-ink: 3px double var(--color-ink);
+  --rule-cartouche:  4px solid var(--color-ink);
+
+  /* Legacy aliases — kept so existing consumers don't break */
+  --border-thin:   var(--rule-hair);
+  --border-double: var(--rule-double);
+  --border-thick:  3px solid var(--color-ink);
+
+  /* ── Motion tokens ─────────────────────────────────────────────────────── */
+  --motion-fast:  120ms;   /* tap, focus ring */
+  --motion-base:  200ms;   /* hover, simple state */
+  --motion-slow:  320ms;   /* enter/exit, body set */
+  --motion-press: 90ms;    /* active state — newspaper "stamp" */
+
+  --ease-ink:     cubic-bezier(0.2, 0.7, 0.2, 1);    /* default settle */
+  --ease-stamp:   cubic-bezier(0.4, 0.0, 0.2, 1);    /* hard arrival */
+  --ease-set:     cubic-bezier(0.16, 1, 0.3, 1);     /* type-setting reveal */
+
+  /* General-purpose easing alias for code that asks for one */
+  --motion-easing: var(--ease-ink);
+
+  /* Paper grain opacity (consumed by .paper-texture filter) */
+  --paper-grain-opacity: 0.04;
 }
 
+/* ── Desktop type-scale overrides ────────────────────────────────────────── */
+@media (min-width: 1024px) {
+  :root {
+    --type-masthead-size:  112px;
+    --type-masthead-lh:    0.95;
+    --type-masthead-track: -0.015em;
+
+    --type-display-size:   72px;
+    --type-display-lh:     1.05;
+    --type-display-track:  -0.02em;
+
+    --type-h1-size:        44px;
+    --type-h2-size:        30px;
+    --type-h3-size:        22px;
+
+    --type-dek-size:       21px;
+    --type-body-size:      18px;
+    --type-body-lh:        1.65;
+
+    --type-kicker-track:   0.20em;
+
+    --display-opsz:        96;
+  }
+}
+
+/* ── Dark mode: "newspaper under a desk lamp" — designed, not inverted ───── */
 [data-edition="night"] {
-  --color-paper: #1c1b18;
-  --color-paper-warm: #252420;
-  --color-paper-cream: #2e2d28;
-  --color-ink: #e8e2d4;
-  --color-ink-medium: #c4bba8;
-  --color-ink-light: #8b8474;
-  --color-ink-faded: #5a5548;
-  --color-rule: #3d3a32;
-  --color-rule-dark: #5a5548;
-  --color-accent-red: #c44a2d;
-  --color-accent-blue: #5b8ab5;
-  --color-accent-gold: #d4a842;
-  --color-spot-green: #5ba55b;
-  --color-spot-red: #c44a4a;
+  /* Paper at night — warm graphite, not OLED black */
+  --color-paper:        #1f1c17;
+  --color-paper-warm:   #2a2620;
+  --color-paper-cream:  #332e26;
+
+  /* Ink at night — warm cream, never #fff */
+  --color-ink:          #ece4d2;
+  --color-ink-medium:   #c8bfa9;
+  --color-ink-light:    #908875;
+  --color-ink-faded:    #5e5849;
+
+  /* Rules at night — slightly higher contrast than day */
+  --color-rule:         #4a4439;
+  --color-rule-dark:    #6b6453;
+  --color-rule-heavy:   #ece4d2;
+
+  /* Accents — desaturated, lit by the lamp */
+  --color-accent-red:   #d05a3a;
+  --color-accent-blue:  #6a9bc4;
+  --color-accent-gold:  #d4a842;
+  --color-spot-green:   #6bb86b;
+  --color-spot-red:     #d05a5a;
+
+  --color-success:      var(--color-spot-green);
+  --color-warning:      #d4a842;
+  --color-error:        var(--color-spot-red);
+
+  /* Slightly lower grain at night to avoid banding under lamp warmth */
+  --paper-grain-opacity: 0.05;
 }
 
 @theme inline {
@@ -71,17 +232,25 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-edition]) {
-    --color-paper: #1c1b18;
-    --color-paper-warm: #252420;
-    --color-paper-cream: #2e2d28;
-    --color-ink: #e8e2d4;
-    --color-ink-medium: #c4bba8;
-    --color-ink-light: #8b8474;
-    --color-rule: #3d3a32;
-    --color-rule-dark: #5a5548;
-    --color-accent-red: #c44a2d;
-    --color-accent-blue: #5b8ab5;
-    --color-accent-gold: #d4a842;
+    --color-paper:        #1f1c17;
+    --color-paper-warm:   #2a2620;
+    --color-paper-cream:  #332e26;
+    --color-ink:          #ece4d2;
+    --color-ink-medium:   #c8bfa9;
+    --color-ink-light:    #908875;
+    --color-ink-faded:    #5e5849;
+    --color-rule:         #4a4439;
+    --color-rule-dark:    #6b6453;
+    --color-rule-heavy:   #ece4d2;
+    --color-accent-red:   #d05a3a;
+    --color-accent-blue:  #6a9bc4;
+    --color-accent-gold:  #d4a842;
+    --color-spot-green:   #6bb86b;
+    --color-spot-red:     #d05a5a;
+    --color-success:      var(--color-spot-green);
+    --color-warning:      #d4a842;
+    --color-error:        var(--color-spot-red);
+    --paper-grain-opacity: 0.05;
   }
 }
 
@@ -89,9 +258,31 @@ body {
   background: var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-body);
+  font-feature-settings: var(--feat-body);   /* oldstyle figures in body */
 }
 
-/* Paper texture - subtle newsprint grain */
+/* ── Typographic feature classes ─────────────────────────────────────────── */
+.font-display,
+h1, h2 {
+  font-feature-settings: var(--feat-display);
+}
+
+.tabular,
+[data-odds] {
+  font-feature-settings: var(--feat-tabular);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.section-title,
+.kicker {
+  font-feature-settings: var(--feat-smcp);
+}
+
+.article-body {
+  font-feature-settings: var(--feat-body);
+}
+
+/* ── Paper texture — static SVG turbulence; no animated noise ────────────── */
 .paper-texture {
   background-color: var(--color-paper);
   background-image:
@@ -107,48 +298,86 @@ body {
 
 [data-edition="night"] .paper-texture {
   background-image:
-    url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
 }
 
+/* ── Column rules + dividers ─────────────────────────────────────────────── */
 .column-rule {
   border-right: var(--column-rule-width) solid var(--color-rule);
 }
 
 .divider-thin {
-  border-top: 1px solid var(--color-rule);
+  border-top: var(--rule-hair);
 }
 
 .divider-double {
-  border-top: 3px double var(--color-rule-dark);
+  border-top: var(--rule-double);
 }
 
-/* Section title - consistent editorial label */
+/* ── Broadsheet rule utilities (horizontal dividers) ─────────────────────── */
+.rule-thin {
+  border: 0;
+  border-top: var(--rule-hair);
+  margin: 0;
+  height: 0;
+}
+
+.rule-medium {
+  border: 0;
+  border-top: var(--rule-medium);
+  margin: 0;
+  height: 0;
+}
+
+.rule-thick {
+  border: 0;
+  border-top: var(--rule-thick);
+  margin: 0;
+  height: 0;
+}
+
+.rule-double {
+  border: 0;
+  border-top: var(--rule-double);
+  margin: 0;
+  height: 0;
+}
+
+.rule-double-ink {
+  border: 0;
+  border-top: var(--rule-double-ink);
+  margin: 0;
+  height: 0;
+}
+
+/* ── Section title — small caps editorial label ──────────────────────────── */
 .section-title {
   font-family: var(--font-ui);
-  font-size: 10px;
+  font-size: var(--type-micro-size);
   font-weight: 700;
-  letter-spacing: 0.2em;
+  letter-spacing: var(--type-micro-track);
   text-transform: uppercase;
   color: var(--color-ink-light);
 }
 
-/* Card hover - subtle lift for premium feel */
+/* ── Card hover — rule-thickening, not box-shadow (anti-pattern §6.2) ────── */
 .card-hover {
-  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
-}
-.card-hover:hover {
-  border-color: var(--color-rule-dark);
-}
-@media (hover: hover) {
-  .card-hover:hover {
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-  }
-}
-[data-edition="night"] .card-hover:hover {
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+  border-bottom-width: 1px;
+  transition:
+    border-color var(--motion-base) var(--ease-ink),
+    border-bottom-width var(--motion-base) var(--ease-ink),
+    transform var(--motion-base) var(--ease-ink);
 }
 
-/* Halftone image effect */
+@media (hover: hover) {
+  .card-hover:hover {
+    border-color: var(--color-rule-dark);
+    border-bottom-color: var(--color-rule-dark);
+    border-bottom-width: 2px;
+  }
+}
+
+/* ── Halftone image effect ───────────────────────────────────────────────── */
 .halftone-image {
   position: relative;
   overflow: hidden;
@@ -171,6 +400,17 @@ body {
   background-size: 4px 4px;
   mix-blend-mode: multiply;
   pointer-events: none;
+  transition: background-size var(--motion-slow) var(--ease-ink);
+}
+
+@media (hover: hover) {
+  .halftone-image:hover::after {
+    background-size: 3px 3px;   /* "ink getting heavier" on hover */
+  }
+}
+
+[data-edition="night"] .halftone-image img {
+  filter: grayscale(100%) contrast(1.05) brightness(0.92);
 }
 
 [data-edition="night"] .halftone-image::after {
@@ -182,7 +422,7 @@ body {
   mix-blend-mode: screen;
 }
 
-/* Skeleton shimmer */
+/* ── Skeleton shimmer (the only sanctioned use of box-shadow-adjacent FX) ── */
 .skeleton {
   background: linear-gradient(
     90deg,
@@ -196,32 +436,69 @@ body {
 }
 
 @keyframes shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
+/* ── Drop cap for article body ───────────────────────────────────────────── */
 .article-body > p:first-of-type::first-letter {
   font-family: var(--font-display);
   font-size: 4em;
   float: left;
   line-height: 0.8;
-  padding-right: 8px;
+  padding-right: 12px;
   padding-top: 4px;
   color: var(--color-ink);
   font-weight: 900;
+  font-feature-settings: var(--feat-display);
 }
 
+@media (max-width: 380px) {
+  .article-body > p:first-of-type::first-letter {
+    padding-right: 8px;
+  }
+}
+
+/* ── Type-set keyframe (article body reveal, §4.1) ───────────────────────── */
+@keyframes type-set {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Ink-stamp keyframe (odds widget probability change, §4.3) ───────────── */
+@keyframes ink-stamp {
+  0%   { opacity: 0; transform: scale(1.06); }
+  60%  { opacity: 1; }
+  100% { opacity: 1; transform: scale(1.0); }
+}
+
+.odds-number[data-changed="true"] {
+  animation: ink-stamp var(--motion-press) var(--ease-stamp);
+}
+
+/* ── Headline ink-underline (§4.2) ───────────────────────────────────────── */
+.headline-link {
+  position: relative;
+}
+.headline-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--motion-base) var(--ease-ink);
+}
+@media (hover: hover) {
+  .headline-link:hover::after { transform: scaleX(1); }
+}
+
+/* ── Ticker animation ────────────────────────────────────────────────────── */
 @keyframes ticker {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
 
 .animate-ticker {
@@ -232,6 +509,16 @@ body {
   animation-play-state: paused;
 }
 
+@keyframes slide-in-top {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.animate-slide-in-top {
+  animation: slide-in-top 0.3s ease-out forwards;
+}
+
+/* ── Reduced motion: respect vestibular systems ──────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -239,7 +526,536 @@ body {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
-  .animate-ticker {
-    animation: none;
+  .animate-ticker { animation: none; }
+  .animate-slide-in-top { animation: none; }
+  .article-body > p { opacity: 1 !important; transform: none !important; }
+  .odds-number[data-changed="true"] { animation: none; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Daily Challenge — broadsheet-Wordle hybrid (docs/design-revamp.md §3.3)
+ *
+ * Container: ink-rule outer + 1px gold inner (cartouche-in-miniature).
+ * Result grid: CSS-square blocks (NOT Unicode emoji) — emoji renders
+ *   inconsistently and ruins screenshots. The clipboard share text keeps
+ *   emoji separately for Twitter/Discord/WhatsApp paste fidelity.
+ * Motion: stamp-in (transform + opacity), no spring, reduced-motion safe.
+ * ────────────────────────────────────────────────────────────────────── */
+
+.challenge-card {
+  position: relative;
+  border: var(--rule-medium, 2px solid var(--color-ink));
+  background: var(--color-paper-warm);
+  padding: 24px 20px;
+}
+
+.challenge-card::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border: 1px solid var(--color-accent-gold);
+  pointer-events: none;
+}
+
+.challenge-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+@media (min-width: 768px) {
+  .challenge-card {
+    padding: 36px 32px;
   }
+}
+
+.challenge-kicker {
+  font-family: var(--font-ui);
+  font-size: var(--type-kicker-size, 11px);
+  letter-spacing: var(--type-kicker-track, 0.18em);
+  line-height: var(--type-kicker-lh, 1.2);
+  text-transform: uppercase;
+  color: var(--color-ink-light);
+  font-weight: 700;
+  font-feature-settings: var(--feat-smcp);
+}
+
+.challenge-headline {
+  font-family: var(--font-display);
+  font-weight: 900;
+  letter-spacing: var(--type-h1-track, -0.01em);
+  line-height: var(--type-h1-lh, 1.1);
+  color: var(--color-ink);
+  font-size: clamp(1.5rem, 6vw, var(--type-h1-size, 2.25rem));
+  text-wrap: balance;
+}
+
+.challenge-date {
+  font-family: var(--font-sub);
+  font-style: italic;
+  color: var(--color-ink-light);
+  font-size: var(--type-meta-size, 13px);
+  letter-spacing: 0.02em;
+}
+
+.challenge-gold-rule {
+  display: block;
+  width: 24px;
+  height: 2px;
+  background: var(--color-accent-gold);
+  margin: 16px auto 0;
+}
+
+/* Submission / share button — solid ink-block, uppercase, wide-tracking. */
+.challenge-button {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  padding: 14px 16px;
+  border: var(--rule-medium, 2px solid var(--color-ink));
+  background: var(--color-paper-cream);
+  color: var(--color-ink);
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: var(--type-kicker-size, 12px);
+  letter-spacing: var(--type-kicker-track, 0.2em);
+  line-height: 1.2;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-base, 200ms) var(--ease-set, cubic-bezier(0.16, 1, 0.3, 1)),
+    color var(--motion-base, 200ms) var(--ease-set, cubic-bezier(0.16, 1, 0.3, 1)),
+    transform var(--motion-press, 90ms) var(--ease-stamp, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+@media (hover: hover) {
+  .challenge-button:hover:not(:disabled) {
+    background: var(--color-ink);
+    color: var(--color-paper);
+  }
+}
+
+.challenge-button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.challenge-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.challenge-button:focus-visible {
+  outline: 2px solid var(--color-accent-blue);
+  outline-offset: 2px;
+}
+
+/* Slider — hard ink puck thumb, no shadow, expanded tap target. */
+.challenge-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  background: transparent;
+  cursor: pointer;
+  padding: 18px 0; /* expand vertical hit-area to ≥44px tall */
+  margin: 0;
+}
+
+.challenge-slider:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.challenge-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  background: var(--challenge-track-bg, var(--color-rule));
+  border: none;
+  border-radius: 0;
+}
+.challenge-slider::-moz-range-track {
+  height: 4px;
+  background: var(--challenge-track-bg, var(--color-rule));
+  border: none;
+  border-radius: 0;
+}
+
+.challenge-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: var(--color-ink);
+  border: 2px solid var(--color-paper-cream);
+  border-radius: 0;
+  margin-top: -7px;
+  cursor: pointer;
+  box-shadow: 0 0 0 1px var(--color-ink);
+}
+.challenge-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background: var(--color-ink);
+  border: 2px solid var(--color-paper-cream);
+  border-radius: 0;
+  cursor: pointer;
+  box-shadow: 0 0 0 1px var(--color-ink);
+}
+
+.challenge-slider:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid var(--color-accent-blue);
+  outline-offset: 2px;
+}
+.challenge-slider:focus-visible::-moz-range-thumb {
+  outline: 2px solid var(--color-accent-blue);
+  outline-offset: 2px;
+}
+
+/* CSS-square share grid (replaces 🟩🟨🟧🟥 on-screen) */
+.challenge-grid {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 16px;
+}
+
+.challenge-block {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--color-rule-dark);
+  background: var(--color-rule-dark);
+  /* inset paper-grain hint without animating layout properties */
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+  opacity: 0;
+  transform: scale(0.7);
+  animation: challenge-block-stamp var(--motion-fast, 120ms)
+    var(--ease-stamp, cubic-bezier(0.4, 0, 0.2, 1)) forwards;
+  animation-delay: calc(var(--challenge-block-i, 0) * 80ms);
+}
+
+@media (min-width: 640px) {
+  .challenge-block {
+    width: 32px;
+    height: 32px;
+  }
+  .challenge-grid {
+    gap: 8px;
+  }
+}
+
+.challenge-block[data-tier="hit"] {
+  background: var(--color-spot-green);
+  border-color: var(--color-spot-green);
+}
+.challenge-block[data-tier="warm"] {
+  background: var(--color-accent-gold);
+  border-color: var(--color-accent-gold);
+}
+.challenge-block[data-tier="cool"] {
+  background: var(--color-accent-red);
+  border-color: var(--color-accent-red);
+}
+.challenge-block[data-tier="miss"] {
+  background: var(--color-rule-dark);
+  border-color: var(--color-rule-dark);
+}
+
+[data-edition="night"] .challenge-block[data-tier="miss"] {
+  /* Dark-mode "warm graphite" miss — token already shifts; restate for clarity */
+  background: var(--color-rule-dark);
+  border-color: var(--color-rule-dark);
+}
+
+@keyframes challenge-block-stamp {
+  0%   { opacity: 0; transform: scale(0.7); }
+  60%  { opacity: 1; }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Score number "stamp" reveal (per-step + final). */
+.challenge-score-stamp {
+  display: inline-block;
+  animation: challenge-stamp var(--motion-base, 200ms)
+    var(--ease-stamp, cubic-bezier(0.4, 0, 0.2, 1)) forwards;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+@keyframes challenge-stamp {
+  0%   { opacity: 0; transform: scale(1.1) rotate(-2deg); }
+  60%  { opacity: 1; }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+.challenge-tabular {
+  font-feature-settings: "tnum" 1, "lnum" 1;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* "EXTRA" stamp: double-rule top + bottom only, no side rules. */
+.challenge-result {
+  border-top: var(--rule-double-ink, 3px double var(--color-ink));
+  border-bottom: var(--rule-double-ink, 3px double var(--color-ink));
+  padding: 20px 0;
+  margin-top: 20px;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .challenge-block,
+  .challenge-score-stamp {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* ===================================================================
+   Retro × Tech × Modern surface (V4 ported)
+   -------------------------------------------------------------------
+   Production rules ported from src/app/design-preview/v4 prototype.
+   The .preview-v4 rules in src/app/design-preview/preview-styles.css
+   stay untouched (the prototype still ships at /design-preview/v4).
+   These rules apply globally on production pages (homepage, article,
+   /transparency).
+
+   Surface-aware split (see docs/v4-cmo-review.md §4):
+     - Homepage + article + sidebar: broadsheet + terminal duality
+     - Email digest: broadsheet only (ASCII breaks in Gmail/Outlook)
+     - Embed widget: terminal only (no broadsheet chrome)
+   =================================================================== */
+
+/* ── Cartouche masthead — triple-ruled like a 1920 NYT plate ─────────── */
+.fe-v4-cartouche {
+  border: 4px double var(--color-ink);
+  padding: 4px;
+  position: relative;
+}
+.fe-v4-cartouche-inner {
+  border: 1px solid var(--color-ink);
+  padding: 28px 32px 22px;
+  text-align: center;
+}
+.fe-v4-wordmark {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: clamp(48px, 7vw, 92px);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--color-ink);
+  font-feature-settings: "lnum", "ss01";
+}
+
+/* ── Press ornament — the 6-frame paper-feed ASCII animation ─────────── */
+.fe-v4-press-ornament {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-family: var(--font-data);
+  font-size: 11px;
+  line-height: 1.05;
+  color: var(--color-rule-dark);
+  white-space: pre;
+  pointer-events: auto;
+  opacity: 0.65;
+}
+@media (max-width: 720px) {
+  .fe-v4-press-ornament { display: none; }
+}
+@media (max-width: 900px) and (min-width: 721px) {
+  .fe-v4-press-ornament { top: 4px; right: 4px; opacity: 0.5; }
+}
+.fe-v4-press-pre {
+  margin: 0;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+  white-space: pre;
+  font-feature-settings: "liga" 0, "calt" 0, "dlig" 0;
+  font-variant-ligatures: none;
+}
+
+/* ── Wire dispatch line — the typing-cursor under the masthead ───────── */
+.fe-v4-wire-dispatch {
+  margin-top: 14px;
+  font-family: var(--font-data);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--color-ink);
+  text-align: center;
+  font-feature-settings: "liga" 0, "calt" 0, "dlig" 0;
+  font-variant-ligatures: none;
+}
+.fe-v4-wire-line {
+  display: inline-block;
+  white-space: nowrap;
+}
+.fe-v4-wire-prefix {
+  color: var(--color-rule-dark);
+}
+.fe-v4-cursor {
+  display: inline-block;
+  margin-left: 2px;
+  font-family: var(--font-data);
+  color: var(--color-accent-gold);
+  animation: fe-v4-blink 1s steps(2, end) infinite;
+}
+@keyframes fe-v4-blink {
+  0%, 49.99% { opacity: 1; }
+  50%, 100%  { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fe-v4-cursor { animation: none; opacity: 1; }
+}
+
+/* ── Above-fold agent identity strip ─────────────────────────────────── */
+.fe-v4-identity-strip {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  background: var(--color-ink);
+  color: var(--color-paper);
+  padding: 8px 24px;
+  border-bottom: 1px solid var(--color-ink);
+  text-decoration: none;
+  transition: background var(--motion-fast) var(--ease-ink);
+  font-feature-settings: "liga" 0, "calt" 0, "dlig" 0;
+  font-variant-ligatures: none;
+}
+.fe-v4-identity-strip:hover {
+  background: color-mix(in srgb, var(--color-ink) 88%, var(--color-accent-gold) 12%);
+}
+.fe-v4-identity-strip > span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fe-v4-identity-strip .fe-v4-identity-balance,
+.fe-v4-identity-strip [data-color="amber"] {
+  color: var(--color-accent-gold);
+  font-weight: 700;
+}
+.fe-v4-identity-strip[data-balance-positive="true"] .fe-v4-identity-balance {
+  color: var(--color-spot-green);
+}
+@media (max-width: 640px) {
+  .fe-v4-identity-strip {
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 16px;
+  }
+  .fe-v4-identity-strip > span { white-space: normal; }
+}
+[data-edition="night"] .fe-v4-identity-strip {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  border-bottom-color: var(--color-rule-dark);
+}
+[data-edition="night"] .fe-v4-identity-strip:hover {
+  background: color-mix(in srgb, var(--color-paper) 92%, var(--color-accent-gold) 8%);
+}
+
+/* ── FILED slug — Reuters-style filing line under the byline ─────────── */
+.fe-v4-filed {
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--color-ink-light);
+  border-top: 1px dashed var(--color-rule-dark);
+  border-bottom: 1px dashed var(--color-rule-dark);
+  padding: 6px 0;
+  margin: 8px 0;
+  font-feature-settings: "liga" 0, "calt" 0, "dlig" 0;
+  font-variant-ligatures: none;
+}
+
+/* ── ASCII odds box — the eye-grabbing widget ────────────────────────── */
+.fe-v4-odds-ascii {
+  font-family: var(--font-data);
+  font-size: 13px;
+  line-height: 1.32;
+  white-space: pre;
+  color: var(--color-ink);
+  background: transparent;
+  margin: 0 0 12px;
+  padding: 0;
+  overflow-x: auto;
+  font-feature-settings: "liga" 0, "calt" 0, "dlig" 0;
+  font-variant-ligatures: none;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.fe-v4-odds-pct {
+  color: var(--color-spot-green);
+  font-weight: 700;
+}
+.fe-v4-odds-bar-line { color: var(--color-spot-green); }
+.fe-v4-odds-meta { color: var(--color-rule-dark); }
+.fe-v4-odds-cta {
+  font-family: var(--font-data);
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  background: var(--color-ink);
+  color: var(--color-paper);
+  padding: 10px 14px;
+  text-align: center;
+  margin-top: 4px;
+  display: block;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: background var(--motion-fast) var(--ease-ink);
+}
+.fe-v4-odds-cta:hover { background: var(--color-accent-blue); }
+@media (max-width: 720px) {
+  .fe-v4-odds-ascii { font-size: 12px; line-height: 1.3; }
+}
+@media (max-width: 380px) {
+  .fe-v4-odds-ascii { font-size: 11px; line-height: 1.28; }
+}
+[data-edition="night"] .fe-v4-odds-pct,
+[data-edition="night"] .fe-v4-odds-bar-line {
+  color: var(--color-accent-gold);
+}
+
+/* ── Agent signature receipt (transparency page only) ────────────────── */
+.fe-v4-agent-sig {
+  font-family: var(--font-data);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--color-ink);
+  background: var(--color-paper);
+  border: 1px solid var(--color-ink);
+  border-top: 4px solid var(--color-ink);
+  padding: 18px 22px;
+  margin: 0;
+  white-space: pre;
+  overflow-x: auto;
+  font-feature-settings: "liga" 0, "calt" 0, "dlig" 0;
+  font-variant-ligatures: none;
+}
+[data-edition="night"] .fe-v4-agent-sig {
+  border-color: var(--color-accent-gold);
+  border-top-color: var(--color-accent-gold);
+}
+@media (max-width: 600px) {
+  .fe-v4-agent-sig { font-size: 11px; padding: 14px 14px; line-height: 1.6; }
+}
+
+/* ── Tagline footer — the brand thesis ───────────────────────────────── */
+.fe-v4-tagline {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 14px;
+  text-align: center;
+  color: var(--color-ink-light);
+  margin: 32px 0 0;
+  letter-spacing: 0.01em;
+}
+
+/* ── Production-page convenience: cartouche masthead container ───────── */
+.fe-v4-masthead-shell {
+  position: relative;
 }

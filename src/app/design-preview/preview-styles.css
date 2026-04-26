@@ -1,0 +1,1133 @@
+/* Scoped styles for the 3 design preview variants.
+   These do NOT touch globals — only apply within .preview-root.
+   Each variant uses .v1-*, .v2-*, .v3-* class prefixes. */
+
+/* ===================================================================
+   SHARED — preview chrome
+   =================================================================== */
+.preview-chip {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 80;
+  padding: 6px 10px;
+  font-family: var(--font-ui), system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  background: var(--color-ink);
+  color: var(--color-paper);
+  border: 1px solid var(--color-ink);
+}
+
+.preview-toggle {
+  position: fixed;
+  top: 16px;
+  right: 130px;
+  z-index: 80;
+  padding: 6px 10px;
+  font-family: var(--font-ui), system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  background: transparent;
+  color: var(--color-ink);
+  border: 1px solid var(--color-ink);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+.preview-toggle:hover {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.preview-back {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 80;
+  padding: 6px 10px;
+  font-family: var(--font-ui), system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-decoration: none;
+  background: var(--color-paper-cream);
+  color: var(--color-ink);
+  border: 1px solid var(--color-ink);
+}
+
+/* ===================================================================
+   VARIANT 1 — DIGNIFIED BROADSHEET
+   warm cream paper, heavy ornament, serif everywhere, no motion
+   =================================================================== */
+.v1-root {
+  --v1-paper: #f3ede0;
+  --v1-paper-cream: #faf6ec;
+  --v1-paper-warm: #ebe3d2;
+  --v1-ink: #1a1714;
+  --v1-ink-medium: #3a352d;
+  --v1-ink-light: #6b6356;
+  --v1-rule: #c4b9a8;
+  --v1-rule-dark: #8b7e6e;
+  --v1-gold: #b8860b;
+  --v1-red: #8b2500;
+  background: var(--v1-paper);
+  color: var(--v1-ink);
+  font-family: var(--font-body), Georgia, serif;
+  font-feature-settings: "kern", "liga", "onum";
+  min-height: 100vh;
+}
+.v1-root[data-edition="night"] {
+  --v1-paper: #1f1c17;
+  --v1-paper-cream: #332e26;
+  --v1-paper-warm: #2a2620;
+  --v1-ink: #ece4d2;
+  --v1-ink-medium: #c8bfa9;
+  --v1-ink-light: #908875;
+  --v1-rule: #4a4439;
+  --v1-rule-dark: #6b6453;
+  --v1-gold: #d4a842;
+  --v1-red: #d05a3a;
+}
+
+.v1-paper-bg {
+  background-color: var(--v1-paper);
+  background-image:
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+}
+
+.v1-cartouche {
+  border: 4px solid var(--v1-ink);
+  padding: 4px;
+}
+.v1-cartouche-inner {
+  border: 1px solid var(--v1-ink);
+  padding: 18px 24px;
+  position: relative;
+}
+.v1-cartouche-inner::before,
+.v1-cartouche-inner::after {
+  content: "";
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  height: 2px;
+  background: var(--v1-gold);
+}
+.v1-cartouche-inner::before { top: 6px; }
+.v1-cartouche-inner::after  { bottom: 6px; }
+
+.v1-wordmark {
+  font-family: var(--font-playfair), Georgia, serif;
+  font-weight: 900;
+  font-size: clamp(48px, 11vw, 112px);
+  line-height: 0.95;
+  letter-spacing: -0.015em;
+  text-align: center;
+  margin: 0;
+  font-feature-settings: "lnum", "ss01";
+}
+
+.v1-rule-double {
+  border-top: 1px solid var(--v1-ink);
+  border-bottom: 1px solid var(--v1-ink);
+  height: 5px;
+}
+.v1-rule-thin { border-top: 1px solid var(--v1-rule-dark); }
+.v1-rule-hair { border-top: 1px solid var(--v1-rule); }
+
+.v1-kicker {
+  font-family: var(--font-dm-sans), sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--v1-ink-light);
+  font-weight: 600;
+}
+
+.v1-hero-headline {
+  font-family: var(--font-playfair), Georgia, serif;
+  font-weight: 900;
+  font-style: italic;
+  font-size: clamp(36px, 6.5vw, 78px);
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  margin: 0;
+  text-wrap: balance;
+}
+.v1-hero-dek {
+  font-family: var(--font-newsreader), Georgia, serif;
+  font-style: italic;
+  font-size: clamp(17px, 1.6vw, 22px);
+  line-height: 1.45;
+  color: var(--v1-ink-medium);
+  text-indent: 1.2ch;
+}
+
+.v1-card-headline {
+  font-family: var(--font-playfair), Georgia, serif;
+  font-weight: 700;
+  font-size: clamp(20px, 2.1vw, 26px);
+  line-height: 1.15;
+  letter-spacing: -0.005em;
+  text-wrap: balance;
+}
+.v1-card-headline a {
+  color: inherit;
+  text-decoration: none;
+  position: relative;
+}
+@media (hover: hover) {
+  .v1-card-headline a:hover { color: var(--v1-red); }
+}
+
+.v1-dropcap::first-letter {
+  font-family: var(--font-playfair), Georgia, serif;
+  font-weight: 900;
+  font-size: 5.2em;
+  float: left;
+  line-height: 0.85;
+  padding: 6px 10px 0 0;
+  color: var(--v1-ink);
+}
+
+.v1-odds {
+  border: 2px solid var(--v1-ink);
+  background: var(--v1-paper-cream);
+  padding: 18px 20px;
+}
+.v1-odds-num {
+  font-family: var(--font-jetbrains), monospace;
+  font-weight: 700;
+  font-size: clamp(48px, 6vw, 64px);
+  line-height: 1;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.v1-halftone {
+  filter: contrast(1.05) saturate(0.7) sepia(0.18);
+  background: var(--v1-paper-warm);
+}
+
+/* Asymmetric 5-column grid for v1 */
+.v1-five-col {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 24px;
+}
+@media (max-width: 900px) {
+  .v1-five-col { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 600px) {
+  .v1-five-col { grid-template-columns: 1fr; gap: 32px; }
+}
+
+.v1-column-rule {
+  border-left: 1px solid var(--v1-rule);
+  padding-left: 20px;
+}
+@media (max-width: 600px) {
+  .v1-column-rule { border-left: 0; padding-left: 0; border-top: 1px solid var(--v1-rule); padding-top: 24px; }
+}
+
+/* ===================================================================
+   VARIANT 2 — EDITORIAL × BRUTALIST
+   near-white, oversized type, thick black rules, asymmetric grid
+   =================================================================== */
+.v2-root {
+  --v2-paper: #f7f5f0;
+  --v2-ink: #0c0c0c;
+  --v2-ink-medium: #2a2a2a;
+  --v2-ink-light: #777;
+  --v2-rule: #0c0c0c;
+  --v2-red: #c8331a;
+  --v2-yellow: #e8c547;
+  background: var(--v2-paper);
+  color: var(--v2-ink);
+  font-family: var(--font-newsreader), Georgia, serif;
+  min-height: 100vh;
+}
+.v2-root[data-edition="night"] {
+  --v2-paper: #0c0c0c;
+  --v2-ink: #f0ece2;
+  --v2-ink-medium: #c8c4ba;
+  --v2-ink-light: #807a6d;
+  --v2-rule: #f0ece2;
+  --v2-red: #ff6a4d;
+  --v2-yellow: #f4d460;
+}
+
+.v2-thick-rule {
+  background: var(--v2-rule);
+  height: 8px;
+  width: 100%;
+}
+.v2-medium-rule { background: var(--v2-rule); height: 3px; width: 100%; }
+.v2-hair-rule  { background: var(--v2-rule); height: 1px; width: 100%; }
+
+.v2-masthead-wordmark {
+  font-family: var(--font-playfair), Georgia, serif;
+  font-weight: 900;
+  font-size: clamp(56px, 14vw, 180px);
+  line-height: 0.85;
+  letter-spacing: -0.04em;
+  margin: 0;
+  text-transform: uppercase;
+  font-stretch: condensed;
+  font-feature-settings: "lnum";
+}
+
+.v2-meta {
+  font-family: var(--font-dm-sans), sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.v2-hero-headline {
+  font-family: var(--font-playfair), Georgia, serif;
+  font-weight: 900;
+  font-size: clamp(44px, 9vw, 128px);
+  line-height: 0.92;
+  letter-spacing: -0.035em;
+  text-transform: none;
+  margin: 0;
+}
+
+.v2-hero-headline em {
+  font-style: italic;
+  color: var(--v2-red);
+}
+
+.v2-dek {
+  font-family: var(--font-newsreader), Georgia, serif;
+  font-style: italic;
+  font-size: clamp(18px, 1.8vw, 24px);
+  line-height: 1.35;
+  max-width: 36ch;
+  color: var(--v2-ink-medium);
+}
+
+.v2-card-headline {
+  font-family: var(--font-playfair), Georgia, serif;
+  font-weight: 900;
+  font-size: clamp(22px, 2.4vw, 32px);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.v2-card {
+  border: 3px solid var(--v2-rule);
+  padding: 20px;
+  background: var(--v2-paper);
+  position: relative;
+  transition: transform 160ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+@media (hover: hover) {
+  .v2-card:hover { transform: translate(-3px, -3px); box-shadow: 6px 6px 0 0 var(--v2-rule); }
+}
+
+.v2-three-col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  border-top: 3px solid var(--v2-rule);
+  border-bottom: 3px solid var(--v2-rule);
+}
+.v2-three-col > * {
+  border-right: 3px solid var(--v2-rule);
+  padding: 24px;
+}
+.v2-three-col > *:last-child { border-right: 0; }
+@media (max-width: 900px) {
+  .v2-three-col { grid-template-columns: 1fr; }
+  .v2-three-col > * { border-right: 0; border-bottom: 3px solid var(--v2-rule); }
+  .v2-three-col > *:last-child { border-bottom: 0; }
+}
+
+.v2-asymmetric {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 0;
+}
+@media (max-width: 900px) {
+  .v2-asymmetric { grid-template-columns: 1fr; }
+}
+
+.v2-odds-block {
+  background: var(--v2-ink);
+  color: var(--v2-paper);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.v2-odds-num {
+  font-family: var(--font-playfair), Georgia, serif;
+  font-weight: 900;
+  font-size: clamp(64px, 9vw, 128px);
+  line-height: 0.85;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.v2-yellow-block {
+  background: var(--v2-yellow);
+  color: var(--v2-ink);
+}
+.v2-red-block {
+  background: var(--v2-red);
+  color: var(--v2-paper);
+}
+
+.v2-link {
+  position: relative;
+  background-image: linear-gradient(var(--v2-rule), var(--v2-rule));
+  background-size: 0% 2px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: background-size 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+@media (hover: hover) {
+  .v2-link:hover { background-size: 100% 2px; }
+}
+
+/* ===================================================================
+   VARIANT 3 — MODERN SALON
+   spacious, single-column reading, hairlines, soft scroll reveals
+   =================================================================== */
+.v3-root {
+  --v3-paper: #fbfaf6;
+  --v3-paper-cream: #f3f0e8;
+  --v3-ink: #1c1a16;
+  --v3-ink-medium: #4a4640;
+  --v3-ink-light: #8a8478;
+  --v3-rule: #d8d2c2;
+  --v3-rule-dark: #a8a294;
+  --v3-accent: #2d5f4f;
+  --v3-gold: #b8860b;
+  background: var(--v3-paper);
+  color: var(--v3-ink);
+  font-family: var(--font-newsreader), Georgia, serif;
+  font-feature-settings: "kern", "liga", "onum";
+  min-height: 100vh;
+}
+.v3-root[data-edition="night"] {
+  --v3-paper: #1a1814;
+  --v3-paper-cream: #25221c;
+  --v3-ink: #ece4d2;
+  --v3-ink-medium: #b8b09e;
+  --v3-ink-light: #7a7363;
+  --v3-rule: #3a342c;
+  --v3-rule-dark: #5a5448;
+  --v3-accent: #7ec3a8;
+  --v3-gold: #d4a842;
+}
+
+.v3-container { max-width: 720px; margin: 0 auto; padding: 0 24px; }
+.v3-container-wide { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+.v3-wordmark {
+  font-family: var(--font-playfair), Georgia, serif;
+  font-weight: 700;
+  font-size: clamp(34px, 4.5vw, 56px);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-style: italic;
+}
+
+.v3-meta {
+  font-family: var(--font-dm-sans), sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--v3-ink-light);
+}
+
+.v3-hairline { border-top: 1px solid var(--v3-rule); }
+
+.v3-hero-headline {
+  font-family: var(--font-playfair), Georgia, serif;
+  font-weight: 700;
+  font-size: clamp(36px, 5.2vw, 64px);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.v3-hero-headline strong {
+  font-weight: 900;
+}
+
+.v3-dek {
+  font-family: var(--font-newsreader), Georgia, serif;
+  font-style: italic;
+  font-size: clamp(18px, 1.5vw, 22px);
+  line-height: 1.5;
+  color: var(--v3-ink-medium);
+}
+
+.v3-body {
+  font-family: var(--font-newsreader), Georgia, serif;
+  font-size: 18px;
+  line-height: 1.65;
+  color: var(--v3-ink-medium);
+  font-feature-settings: "kern", "liga", "onum";
+}
+
+.v3-card {
+  padding: 28px 0;
+  border-bottom: 1px solid var(--v3-rule);
+  transition: background-color 240ms ease;
+}
+@media (hover: hover) {
+  .v3-card:hover { background: color-mix(in srgb, var(--v3-paper-cream) 60%, transparent); }
+}
+
+.v3-card-headline {
+  font-family: var(--font-playfair), Georgia, serif;
+  font-weight: 700;
+  font-size: clamp(22px, 2.2vw, 28px);
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+.v3-odds-pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--v3-rule-dark);
+  border-radius: 999px;
+  background: var(--v3-paper-cream);
+  font-family: var(--font-jetbrains), monospace;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.v3-odds-card {
+  border: 1px solid var(--v3-rule-dark);
+  padding: 28px;
+  background: var(--v3-paper-cream);
+  border-radius: 4px;
+}
+.v3-odds-num {
+  font-family: var(--font-playfair), Georgia, serif;
+  font-weight: 900;
+  font-size: clamp(64px, 9vw, 96px);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.v3-reveal {
+  opacity: 0;
+  transform: translateY(8px);
+  animation: v3-reveal-in 480ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.v3-reveal-d1 { animation-delay: 80ms; }
+.v3-reveal-d2 { animation-delay: 160ms; }
+.v3-reveal-d3 { animation-delay: 240ms; }
+.v3-reveal-d4 { animation-delay: 320ms; }
+@keyframes v3-reveal-in {
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v3-reveal { animation: none; opacity: 1; transform: none; }
+}
+
+.v3-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+}
+@media (max-width: 800px) {
+  .v3-two-col { grid-template-columns: 1fr; gap: 0; }
+}
+
+/* ============================================================
+   V4 — Retro × Tech × Modern
+   1925 broadsheet body + 1985 line-printer data chrome
+   ============================================================ */
+
+.preview-v4 {
+  --v4-mono: var(--font-data);
+  --v4-paper: #f3ede0;
+  --v4-ink: #1a1714;
+  --v4-rule: #6b6356;
+  /* Polish: phosphor was pure-green (#2d5f2d) which fought the
+     warm-paper palette in dark mode. Switched to a muted olive-amber
+     hybrid — still reads as "machine voice" but sits inside the
+     desk-lamp paper world rather than next to it. */
+  --v4-phosphor: #5a6b1c;
+  --v4-amber: #b87a16;
+  background: var(--v4-paper);
+  color: var(--v4-ink);
+  min-height: 100vh;
+  font-family: var(--font-body);
+}
+.preview-v4[data-edition="night"] {
+  --v4-paper: #1f1c17;
+  --v4-ink: #ece4d2;
+  --v4-rule: #6b6453;
+  /* Night phosphor — soft sage instead of CRT phosphor green.
+     Still distinct from the cream ink, but reads "lamp-lit terminal"
+     not "Matrix code rain." */
+  --v4-phosphor: #9bbf6a;
+  --v4-amber: #d4a842;
+  background: var(--v4-paper);
+  color: var(--v4-ink);
+}
+
+.v4-paper-bg { background: var(--v4-paper); }
+
+.v4-chip-mono {
+  font-family: var(--v4-mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  background: var(--v4-ink);
+  color: var(--v4-paper);
+  border: 1px solid var(--v4-ink);
+}
+
+.v4-kicker {
+  font-family: var(--v4-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--v4-ink);
+}
+
+/* Masthead cartouche (triple ruling like a 1920 NYT plate) */
+.v4-cartouche {
+  border: 4px double var(--v4-ink);
+  padding: 4px;
+  position: relative;
+}
+.v4-cartouche-inner {
+  border: 1px solid var(--v4-ink);
+  padding: 28px 32px 22px;
+  text-align: center;
+}
+.v4-wordmark {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: clamp(48px, 7vw, 92px);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--v4-ink);
+}
+
+.v4-press-ornament {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-family: var(--v4-mono);
+  font-size: 11px;
+  line-height: 1.05;
+  color: var(--v4-rule);
+  white-space: pre;
+  /* Polish: was pointer-events: none, but PressOrnament now supports
+     pause-on-hover so we need the cursor area to be hover-detectable. */
+  pointer-events: auto;
+  opacity: 0.65;
+}
+@media (max-width: 720px) {
+  .v4-press-ornament { display: none; }
+}
+
+.v4-wire-dispatch {
+  margin-top: 14px;
+  font-family: var(--v4-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--v4-ink);
+  text-align: center;
+}
+
+/* Breaking ticker */
+.v4-ticker-wrap {
+  background: var(--v4-ink);
+  color: var(--v4-paper);
+  border-top: 2px solid var(--v4-ink);
+  border-bottom: 2px solid var(--v4-ink);
+  padding: 10px 0;
+  margin-top: 18px;
+  margin-bottom: 24px;
+}
+.v4-ticker-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.v4-ticker-prefix {
+  font-family: var(--v4-mono);
+  font-size: 16px;
+  color: var(--v4-amber);
+  flex-shrink: 0;
+}
+.v4-ticker-extra {
+  background: var(--v4-paper);
+  color: var(--v4-ink);
+  padding: 2px 10px;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.v4-ticker-text {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 16px;
+  flex: 1;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+.v4-ticker-cursor {
+  font-family: var(--v4-mono);
+  color: var(--v4-amber);
+  /* Polish: spec says 1s steps. Was 1.05s — visually fine but the spec
+     value is stricter and reads as a deliberate "wire is alive" beat. */
+  animation: v4-blink 1s steps(2, end) infinite;
+  flex-shrink: 0;
+}
+@keyframes v4-blink {
+  0%, 49.99% { opacity: 1; }
+  50%, 100%  { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v4-ticker-cursor { animation: none; opacity: 1; }
+}
+
+/* Five-column hero layout (3 + 2 sidebar) */
+.v4-five-col {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 48px;
+  border-top: 6px solid var(--v4-ink);
+  padding-top: 24px;
+}
+.v4-five-col > article {
+  border-right: 1px solid var(--v4-rule);
+  padding-right: 32px;
+}
+.v4-five-col > aside + aside {
+  border-top: 1px solid var(--v4-rule);
+  padding-top: 24px;
+  margin-top: 24px;
+}
+@media (max-width: 980px) {
+  .v4-five-col { grid-template-columns: 1fr; gap: 28px; }
+  .v4-five-col > article { border-right: none; padding-right: 0; }
+}
+
+.v4-rule-double {
+  border-top: 1px solid var(--v4-ink);
+  border-bottom: 1px solid var(--v4-ink);
+  height: 4px;
+  background: var(--v4-paper);
+}
+.v4-rule-thin {
+  height: 1px;
+  background: var(--v4-rule);
+}
+
+.v4-hero-headline {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(40px, 5.6vw, 76px);
+  line-height: 1.0;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--v4-ink);
+}
+.v4-hero-dek {
+  font-family: var(--font-sub);
+  font-style: italic;
+  font-size: clamp(18px, 1.6vw, 22px);
+  line-height: 1.4;
+  color: var(--v4-ink);
+  margin: 0;
+}
+
+.v4-filed {
+  font-family: var(--v4-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--v4-rule);
+  border-top: 1px dashed var(--v4-rule);
+  border-bottom: 1px dashed var(--v4-rule);
+  padding: 6px 0;
+  margin-top: 4px;
+}
+
+.v4-hero-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 32px;
+  align-items: start;
+}
+@media (max-width: 720px) {
+  .v4-hero-grid { grid-template-columns: 1fr; gap: 24px; }
+}
+
+.v4-halftone {
+  filter: contrast(1.05) saturate(0.4) sepia(0.05);
+  background-color: var(--v4-rule);
+}
+
+.v4-dropcap::first-letter {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-style: normal;
+  float: left;
+  font-size: 72px;
+  line-height: 0.85;
+  padding-right: 8px;
+  padding-top: 4px;
+  color: var(--v4-ink);
+}
+
+/* ASCII odds widget */
+.v4-odds-ascii {
+  font-family: var(--v4-mono);
+  font-size: 13px;
+  line-height: 1.32;
+  white-space: pre;
+  color: var(--v4-ink);
+  background: transparent;
+  margin: 0 0 12px;
+  padding: 0;
+  overflow-x: auto;
+}
+.v4-odds-pct {
+  color: var(--v4-phosphor);
+  font-weight: 700;
+}
+.v4-odds-bar-line { color: var(--v4-phosphor); }
+.v4-odds-meta { color: var(--v4-rule); }
+.v4-odds-cta {
+  font-family: var(--v4-mono);
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  background: var(--v4-ink);
+  color: var(--v4-paper);
+  padding: 10px 14px;
+  text-align: center;
+  margin-top: 4px;
+}
+.preview-v4[data-edition="night"] .v4-odds-cta {
+  background: var(--v4-phosphor);
+  color: var(--v4-paper);
+}
+@media (max-width: 480px) {
+  .v4-odds-ascii { font-size: 11px; }
+}
+
+/* Sidebar lead cards */
+.v4-column-rule {
+  padding-top: 8px;
+}
+.v4-card-headline {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(20px, 1.6vw, 24px);
+  line-height: 1.12;
+  margin: 0;
+}
+.v4-card-headline a {
+  color: var(--v4-ink);
+  text-decoration: none;
+}
+.v4-card-headline a:hover { text-decoration: underline; }
+.v4-ascii-rule {
+  font-family: var(--v4-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--v4-rule);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.v4-card-source {
+  font-family: var(--v4-mono);
+  font-size: 10px;
+  color: var(--v4-rule);
+  margin-top: 6px;
+  letter-spacing: 0.08em;
+}
+
+/* Secondary grid + challenge */
+.v4-secondary-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 48px;
+  align-items: start;
+}
+@media (max-width: 980px) {
+  .v4-secondary-grid { grid-template-columns: 1fr; }
+}
+.v4-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 32px 28px;
+}
+.v4-secondary-card {
+  border-bottom: 1px solid var(--v4-rule);
+  padding-bottom: 20px;
+}
+
+.v4-challenge-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  position: sticky;
+  top: 24px;
+}
+.v4-challenge-card {
+  background: var(--v4-paper);
+  border: 1px solid var(--v4-ink);
+  border-top: 6px solid var(--v4-ink);
+  padding: 24px 22px;
+}
+.v4-gold-dash {
+  height: 4px;
+  background: var(--v4-amber);
+  margin: 12px auto;
+  width: 80px;
+}
+.v4-block-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+.v4-block {
+  aspect-ratio: 1;
+  border: 1px solid var(--v4-ink);
+  background: var(--v4-rule);
+  animation: v4-stamp 220ms cubic-bezier(0.2, 0.6, 0.2, 1) backwards;
+  animation-delay: calc(80ms * var(--i, 0));
+}
+.v4-block:nth-child(1) { --i: 0; }
+.v4-block:nth-child(2) { --i: 1; }
+.v4-block:nth-child(3) { --i: 2; }
+.v4-block:nth-child(4) { --i: 3; }
+.v4-block:nth-child(5) { --i: 4; }
+.v4-block[data-tier="hit"] { background: var(--color-spot-green); }
+.v4-block[data-tier="warm"] { background: var(--color-accent-gold); }
+.v4-block[data-tier="cool"] { background: var(--color-accent-red); opacity: 0.8; }
+.v4-block[data-tier="miss"] { background: var(--v4-rule); }
+@keyframes v4-stamp {
+  from { transform: scale(0.7); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v4-block { animation: none; }
+}
+
+.v4-challenge-wire {
+  font-family: var(--v4-mono);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--v4-ink);
+  background: var(--v4-paper);
+  border: 1px dashed var(--v4-rule);
+  padding: 14px 16px;
+  margin: 0;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* Agent signature footer — promoted to brand-defining position */
+.v4-agent-sig {
+  font-family: var(--v4-mono);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--v4-ink);
+  background: var(--v4-paper);
+  border: 1px solid var(--v4-ink);
+  border-top: 4px solid var(--v4-ink);
+  padding: 18px 22px;
+  margin: 0;
+  white-space: pre;
+  overflow-x: auto;
+  position: relative;
+}
+.preview-v4[data-edition="night"] .v4-agent-sig {
+  border-color: var(--v4-phosphor);
+  border-top-color: var(--v4-phosphor);
+}
+
+/* Above-fold identity strip — surfaces the wallet brand-defining moment per CMO/marketing reviews */
+.v4-identity-strip {
+  font-family: var(--v4-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  background: var(--v4-ink);
+  color: var(--v4-paper);
+  padding: 8px 24px;
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--v4-ink);
+}
+.v4-identity-strip span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.v4-identity-strip .v4-identity-balance {
+  /* Polish: was --v4-phosphor (pure green) which clashed with the
+     ink-dark strip. Amber gives "active wallet glow" without going
+     phosphor — this is a desk-lamp newspaper, not a CRT terminal. */
+  color: var(--v4-amber);
+  font-weight: 700;
+}
+
+.v4-classified-mono {
+  font-family: var(--v4-mono);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--v4-ink);
+  margin: 0;
+  white-space: pre;
+}
+
+/* === V4 polish ============================================================
+ * Targeted fixes applied during the auto-polish pass.
+ * - Define classes the page references but that had no rules
+ *   (.v4-press-pre, .v4-cursor, .v4-wire-line, .v4-wire-prefix).
+ * - Lock box-drawing characters against ligatures + fractional widths.
+ * - Tighten cursor blink to a single 1s rhythm shared by all cursors.
+ * - Belt-and-braces reduced-motion suppression.
+ * - Mobile font-size step on the odds widget so the box stops
+ *   breaking under 380px viewports.
+ * ======================================================================== */
+
+/* Wire-dispatch cursor (in the masthead cartouche). Was unstyled —
+   defaulted to whatever the surrounding span inherited and never blinked.
+   Now matches the ticker cursor: same amber, same 1s rhythm. */
+.v4-cursor {
+  display: inline-block;
+  margin-left: 2px;
+  font-family: var(--v4-mono);
+  color: var(--v4-amber);
+  animation: v4-blink 1s steps(2, end) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .v4-cursor { animation: none; opacity: 1; }
+}
+
+.v4-wire-line {
+  display: inline-block;
+  white-space: nowrap;
+}
+.v4-wire-prefix {
+  color: var(--v4-rule);
+}
+
+/* Press ornament inner pre — the JS component renders <pre> for the
+   ASCII frames; without these resets it inherits monospace defaults
+   that make the frame jitter as the cursor box redraws. */
+.v4-press-pre {
+  margin: 0;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+  white-space: pre;
+  /* Disable ligatures + contextual alternates so ┌ ─ ┐ │ └ ┘ render
+     literally and don't get interpreted as combining glyphs by some
+     mono fonts (Fira Code, JetBrains, Cascadia all do this). */
+  font-feature-settings: "liga" 0, "calt" 0, "dlig" 0;
+  font-variant-ligatures: none;
+}
+
+/* Odds ASCII box — disable ligatures, lock tabular numerals, and
+   keep the right edge intact even when probability changes from 7 to
+   71 (otherwise the bar column drifts by one figure-width). Mobile
+   step: 13 → 12 → 11 px so the 31-col box stays under 390px without
+   horizontal scroll while characters still align. */
+.v4-odds-ascii {
+  font-feature-settings: "liga" 0, "calt" 0, "dlig" 0;
+  font-variant-ligatures: none;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+@media (max-width: 720px) {
+  .v4-odds-ascii { font-size: 12px; line-height: 1.3; }
+}
+@media (max-width: 380px) {
+  .v4-odds-ascii { font-size: 11px; line-height: 1.28; }
+}
+
+/* Sidebar/secondary ASCII rules — same treatment so the bracketed
+   probability glyph cluster ───[ ECONOMY · 64% ]────── doesn't get
+   re-spaced by the font's contextual alternates. */
+.v4-ascii-rule {
+  font-feature-settings: "liga" 0, "calt" 0, "dlig" 0;
+  font-variant-ligatures: none;
+  /* 10px was below the spec's 11px floor for readable mono. */
+  font-size: 11px;
+}
+.v4-card-source {
+  /* Same legibility bump. */
+  font-size: 11px;
+}
+
+/* All mono surfaces with whitespace: pre also need ligature-off so
+   the dispatch frame, agent signature, and classified mono read as
+   plain ASCII not as decorated programming text. */
+.v4-challenge-wire,
+.v4-agent-sig,
+.v4-classified-mono,
+.v4-wire-dispatch,
+.v4-filed,
+.v4-identity-strip {
+  font-feature-settings: "liga" 0, "calt" 0, "dlig" 0;
+  font-variant-ligatures: none;
+}
+
+/* Mobile sizing for the agent signature — the wallet hex string is the
+   widest single line (44 chars) and at 12px overflows below 360px.
+   Step down so it reads without horizontal scroll on iPhone SE-class
+   screens; the tabular figures keep alignment. */
+@media (max-width: 600px) {
+  .v4-agent-sig { font-size: 11px; padding: 14px 14px; line-height: 1.6; }
+}
+
+/* Identity strip on mobile — was wrapping awkwardly and the right-edge
+   ellipsis on three flexed spans hid information. Stack instead. */
+@media (max-width: 600px) {
+  .v4-identity-strip {
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 16px;
+  }
+  .v4-identity-strip span { white-space: normal; }
+}
+
+/* Press ornament on small viewports stays hidden, but if a tablet
+   width sits between 720 and 900 the ornament was overlapping the
+   wordmark when the cartouche tightened. Pull it up + right slightly. */
+@media (max-width: 900px) and (min-width: 721px) {
+  .v4-press-ornament { top: 4px; right: 4px; opacity: 0.5; }
+}
+
+/* Belt-and-braces: any v4 mono cursor or animated chrome stops on
+   reduced-motion. The block-grid stamp is already covered above. */
+@media (prefers-reduced-motion: reduce) {
+  .v4-cursor,
+  .v4-ticker-cursor { animation: none; opacity: 1; }
+}

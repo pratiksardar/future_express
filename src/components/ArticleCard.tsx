@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { AccuracyBadge } from "./AccuracyBadge";
 
 type ArticleCardProps = {
   headline: string;
@@ -12,6 +13,7 @@ type ArticleCardProps = {
   publishedAt?: string;
   volume24h?: string | null;
   size?: "default" | "hero" | "compact";
+  trendingDelta?: number | null;
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -30,6 +32,21 @@ function probColor(p: number) {
   return "var(--color-spot-red)";
 }
 
+function TrendingBadge({ delta }: { delta: number }) {
+  const isUp = delta > 0;
+  return (
+    <span
+      className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider font-[family-name:var(--font-ui)] rounded-sm animate-pulse"
+      style={{
+        color: isUp ? "var(--color-spot-green)" : "var(--color-spot-red)",
+        backgroundColor: isUp ? "rgba(26, 107, 60, 0.12)" : "rgba(139, 28, 28, 0.12)",
+      }}
+    >
+      {isUp ? "▲" : "▼"} Odds Shifting {isUp ? "+" : ""}{delta}
+    </span>
+  );
+}
+
 export function ArticleCard({
   headline,
   subheadline,
@@ -41,6 +58,7 @@ export function ArticleCard({
   publishedAt,
   volume24h,
   size = "default",
+  trendingDelta,
 }: ArticleCardProps) {
   const prob = currentProbability ?? probabilityAtPublish;
   const p = prob ? parseInt(prob, 10) : 50;
@@ -48,8 +66,11 @@ export function ArticleCard({
   if (size === "hero") {
     return (
       <article className="border-l-4 border-l-[var(--color-accent-red)] pl-[var(--space-5)] border-b-[var(--border-double)] pb-[var(--space-7)]">
-        <div className="section-title mb-3">
+        <div className="section-title mb-3 flex items-center gap-3">
           {CATEGORY_LABELS[category] ?? category}
+          {trendingDelta != null && Math.abs(trendingDelta) >= 5 && (
+            <TrendingBadge delta={trendingDelta} />
+          )}
         </div>
         <Link href={`/article/${slug}`} className="block group">
           {imageUrl && (
@@ -97,6 +118,15 @@ export function ArticleCard({
             Source: Polymarket · ${volume24h}
           </p>
         )}
+        {probabilityAtPublish && currentProbability && (
+          <div className="mt-2">
+            <AccuracyBadge
+              probabilityAtPublish={parseInt(probabilityAtPublish, 10)}
+              currentProbability={parseInt(currentProbability, 10)}
+              size="md"
+            />
+          </div>
+        )}
       </article>
     );
   }
@@ -127,8 +157,11 @@ export function ArticleCard({
 
   return (
     <article className="card-hover p-[var(--space-5)] bg-[var(--color-paper-warm)] border border-[var(--color-rule)] rounded-sm">
-      <div className="section-title mb-2">
+      <div className="section-title mb-2 flex items-center gap-2">
         {CATEGORY_LABELS[category] ?? category}
+        {trendingDelta != null && Math.abs(trendingDelta) >= 5 && (
+          <TrendingBadge delta={trendingDelta} />
+        )}
       </div>
       <Link href={`/article/${slug}`} className="block group">
         {imageUrl && (
@@ -169,6 +202,14 @@ export function ArticleCard({
           })
           : ""}
       </p>
+      {probabilityAtPublish && currentProbability && (
+        <div className="mt-2">
+          <AccuracyBadge
+            probabilityAtPublish={parseInt(probabilityAtPublish, 10)}
+            currentProbability={parseInt(currentProbability, 10)}
+          />
+        </div>
+      )}
     </article>
   );
 }

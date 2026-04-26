@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { articles, markets, editions } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { getAppUrl } from "@/lib/url";
 
 export const dynamic = "force-dynamic";
 
@@ -31,8 +32,7 @@ const PROB_LABELS = (p: number) => {
  *   url (full URL to article page)
  */
 export async function GET(req: Request) {
-    const appUrl =
-        process.env.NEXT_PUBLIC_APP_URL ?? "https://thefutureexpress.com";
+    const appUrl = getAppUrl();
     const { searchParams } = new URL(req.url);
 
     const limitParam = Number(searchParams.get("limit")) || 10;

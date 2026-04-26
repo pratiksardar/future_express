@@ -2,8 +2,9 @@ import { inngest } from "./client";
 import { runIngestion } from "@/lib/ingestion/run";
 import { generateMorningEdition, runEditionPipeline } from "@/lib/articles/generate";
 import { db } from "@/lib/db";
-import { probabilitySnapshots } from "@/lib/db/schema";
-import { desc, gte } from "drizzle-orm";
+import { articles, probabilitySnapshots } from "@/lib/db/schema";
+import { desc, eq, gte } from "drizzle-orm";
+import { broadcastBreaking } from "@/app/api/events/breaking/route";
 
 /**
  * Primary pipeline: every 4 hours we pull data from prediction markets once,
@@ -68,6 +69,31 @@ export const checkBreaking = inngest.createFunction(
     for (const [marketId, { min, max }] of byMarket) {
       if (max - min >= 15) breaking.push(marketId);
     }
+
+    // For each breaking market, find the most recent article and broadcast it.
+    for (const marketId of breaking.slice(0, 10)) {
+      const [article] = await db
+        .select({
+          id: articles.id,
+          headline: articles.headline,
+          slug: articles.slug,
+          probabilityAtPublish: articles.probabilityAtPublish,
+        })
+        .from(articles)
+        .where(eq(articles.marketId, marketId))
+        .orderBy(desc(articles.publishedAt))
+        .limit(1);
+
+      if (article && article.slug) {
+        broadcastBreaking({
+          articleId: article.id,
+          headline: article.headline,
+          slug: article.slug,
+          probability: Number(article.probabilityAtPublish ?? 0) / 100,
+        });
+      }
+    }
+
     return { breakingCount: breaking.length, marketIds: breaking.slice(0, 10) };
   }
 );

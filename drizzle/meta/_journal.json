@@ -36,6 +36,20 @@
       "when": 1772175777275,
       "tag": "0004_tidy_calypso",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1774330152845,
+      "tag": "0005_melodic_sunfire",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1775991762952,
+      "tag": "0006_daily_challenge",
+      "breakpoints": true
     }
   ]
 }

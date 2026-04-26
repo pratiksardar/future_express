@@ -8,6 +8,7 @@ import { chatCompletion, generateArticleImage } from "./llm";
 import { get0GAIResponse } from "@/lib/blockchain/zeroG/client";
 import { matchScore } from "@/lib/ingestion/normalize";
 import { loggers, createPipelineLogger } from "@/lib/logger";
+import { getArticleAccuracyContext, scoreArticleAccuracy } from "./accuracy";
 
 /** Extract JSON from model output (handles optional markdown code blocks). */
 function extractJson(raw: string): string {
@@ -74,7 +75,22 @@ export async function generateArticleForMarket(
     .map((r) => `[${r.title}] ${r.snippet.slice(0, 300)}`)
     .join("\n\n");
 
-  const prompt = buildArticlePrompt(market, researchContext, newsAngle);
+  // Inject accuracy context if we've covered this market before
+  let accuracyContext = "";
+  try {
+    const ctx = await getArticleAccuracyContext(market.id);
+    if (ctx && ctx.previousArticles.length > 0) {
+      accuracyContext = `\n\nPREVIOUS COVERAGE TRACK RECORD (${ctx.trackRecord}):\n` +
+        ctx.previousArticles.map((p) =>
+          `- "${p.headline}" published at ${p.probabilityAtPublish}%, now ${p.currentProbability}%${p.directionCorrect === 1 ? " (direction correct)" : p.directionCorrect === 0 ? " (direction wrong)" : ""}`
+        ).join("\n") +
+        "\nIncorporate this track record naturally if relevant — mention how previous coverage held up.";
+    }
+  } catch {
+    // Non-critical, skip if accuracy module fails
+  }
+
+  const prompt = buildArticlePrompt(market, researchContext + accuracyContext, newsAngle);
 
   try {
     // Decentralized AI Inference via 0G Compute Network
@@ -139,6 +155,15 @@ export async function generateArticleForMarket(
         publishedAt: new Date(),
       })
       .returning({ id: articles.id });
+
+    // Initialize accuracy tracking for this article
+    if (inserted?.id) {
+      try {
+        await scoreArticleAccuracy(inserted.id);
+      } catch {
+        // Non-critical, accuracy tracking can catch up later
+      }
+    }
 
     if (editionId && inserted?.id) {
       const maxPos = await db

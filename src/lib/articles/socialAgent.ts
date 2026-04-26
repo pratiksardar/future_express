@@ -9,6 +9,7 @@ import { articles, editionArticles, editions, playcards } from "@/lib/db/schema"
 import { eq } from "drizzle-orm";
 import { generatePlaycardResponse, resolveCtaVariant, type PlaycardPayload } from "@/lib/articles/playcard";
 import { loggers } from "@/lib/logger";
+import { getAppUrl } from "@/lib/url";
 
 export type GeneratePlaycardResult = {
   success: boolean;
@@ -16,7 +17,7 @@ export type GeneratePlaycardResult = {
 };
 
 function getArticleScreenshotUrl(slug: string): string {
-  const appBase = (process.env.NEXT_PUBLIC_APP_URL ?? "https://thefutureexpress.com").replace(/\/$/, "");
+  const appBase = getAppUrl();
   const articleUrl = `${appBase}/article/${slug}`;
   return `https://image.thum.io/get/width/1200/crop/675/noanimate/${encodeURIComponent(articleUrl)}`;
 }

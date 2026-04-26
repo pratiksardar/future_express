@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.gstack/
+
+# Agent worktrees (embedded git repos used by Claude Code agents)
+.claude/worktrees/

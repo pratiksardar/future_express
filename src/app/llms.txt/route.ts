@@ -1,7 +1,8 @@
+import { getAppUrl } from "@/lib/url";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://future-express.vercel.app";
+    const appUrl = getAppUrl();
 
     const content = `# The Future Express — LLM & Agent Guidelines
 

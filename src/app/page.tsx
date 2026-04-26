@@ -1,4 +1,5 @@
 import { Masthead } from "@/components/Masthead";
+import { AgentIdentityStrip } from "@/components/AgentIdentityStrip";
 import { BreakingTicker } from "@/components/BreakingTicker";
 import { SectionNav } from "@/components/SectionNav";
 import { ArticleCard } from "@/components/ArticleCard";
@@ -6,10 +7,13 @@ import { MarketBriefs } from "@/components/MarketBriefs";
 import { NewsletterSignup } from "@/components/NewsletterSignup";
 import { Classifieds } from "@/components/Classifieds";
 import { AdSlot } from "@/components/AdSlot";
+import { PlatformConfidence } from "@/components/PlatformConfidence";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { articles, markets, editions, editionArticles } from "@/lib/db/schema";
 import { desc, eq, asc, inArray } from "drizzle-orm";
+import { getTrendingMarkets } from "@/lib/articles/trending";
+import { getAppUrl } from "@/lib/url";
 
 async function getLatestEdition() {
   try {
@@ -42,6 +46,7 @@ async function getArticlesForLatestEdition(editionId: string) {
         publishedAt: articles.publishedAt,
         currentProbability: markets.currentProbability,
         volume24h: markets.volume24h,
+        marketId: articles.marketId,
       })
       .from(articles)
       .innerJoin(markets, eq(articles.marketId, markets.id))
@@ -68,6 +73,7 @@ async function getArticlesFallback() {
         publishedAt: articles.publishedAt,
         currentProbability: markets.currentProbability,
         volume24h: markets.volume24h,
+        marketId: articles.marketId,
       })
       .from(articles)
       .innerJoin(markets, eq(articles.marketId, markets.id))
@@ -81,12 +87,21 @@ async function getArticlesFallback() {
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://thefutureexpress.com";
+  const appUrl = getAppUrl();
   const latestEdition = await getLatestEdition();
   const editionArticlesList = latestEdition?.id
     ? await getArticlesForLatestEdition(latestEdition.id)
     : [];
   const list = editionArticlesList.length > 0 ? editionArticlesList : await getArticlesFallback();
+
+  // Fetch trending data for badges
+  let trendingMap = new Map<string, { delta: number }>();
+  try {
+    const trending = await getTrendingMarkets(24, 5);
+    trendingMap = trending;
+  } catch {
+    // Non-critical: trending badges just won't show
+  }
   const [lead, second, third, fourth, ...rest] = list;
   const latestEditionLabel = latestEdition?.publishedAt
     ? new Date(latestEdition.publishedAt).toLocaleString("en-US", {
@@ -131,6 +146,11 @@ export default async function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      {/* V4 above-fold agent identity strip — links to /transparency for the
+          full ceremonial receipt. Per CMO + marketing review consensus, the
+          wallet narrative is the brand surface but the full hex moves to a
+          dedicated page so Wedge A (finance pros) doesn't bounce. */}
+      <AgentIdentityStrip />
       <Masthead
         latestEdition={mastheadEditionLabel}
         volumeNumber={latestEdition?.volumeNumber}
@@ -153,6 +173,7 @@ export default async function HomePage() {
                 publishedAt={lead.publishedAt?.toISOString()}
                 volume24h={lead.volume24h}
                 size="hero"
+                trendingDelta={trendingMap.get(lead.marketId)?.delta ?? null}
               />
             )}
             {!lead && (
@@ -183,6 +204,7 @@ export default async function HomePage() {
                   currentProbability={second.currentProbability}
                   publishedAt={second.publishedAt?.toISOString()}
                   size="compact"
+                  trendingDelta={trendingMap.get(second.marketId)?.delta ?? null}
                 />
               )}
               {third && (
@@ -196,6 +218,7 @@ export default async function HomePage() {
                   currentProbability={third.currentProbability}
                   publishedAt={third.publishedAt?.toISOString()}
                   size="compact"
+                  trendingDelta={trendingMap.get(third.marketId)?.delta ?? null}
                 />
               )}
               {fourth && (
@@ -209,6 +232,7 @@ export default async function HomePage() {
                   currentProbability={fourth.currentProbability}
                   publishedAt={fourth.publishedAt?.toISOString()}
                   size="compact"
+                  trendingDelta={trendingMap.get(fourth.marketId)?.delta ?? null}
                 />
               )}
             </div>
@@ -223,7 +247,7 @@ export default async function HomePage() {
               <div className="md:col-span-1 lg:pr-[var(--space-6)] border-r-0 md:border-r border-[var(--color-rule)] p-4 md:p-5">
                 <h2 className="section-title mb-4">Politics</h2>
                 {politicsArticles.map((a) => (
-                  <ArticleCard key={a.id} {...a} publishedAt={a.publishedAt?.toISOString()} size="compact" />
+                  <ArticleCard key={a.id} {...a} publishedAt={a.publishedAt?.toISOString()} size="compact" trendingDelta={trendingMap.get(a.marketId)?.delta ?? null} />
                 ))}
               </div>
             );
@@ -235,13 +259,14 @@ export default async function HomePage() {
               <div className="md:col-span-1 lg:pr-[var(--space-6)] border-r-0 md:border-r border-[var(--color-rule)] p-4 md:p-5">
                 <h2 className="section-title mb-4">Crypto</h2>
                 {cryptoArticles.map((a) => (
-                  <ArticleCard key={a.id} {...a} publishedAt={a.publishedAt?.toISOString()} size="compact" />
+                  <ArticleCard key={a.id} {...a} publishedAt={a.publishedAt?.toISOString()} size="compact" trendingDelta={trendingMap.get(a.marketId)?.delta ?? null} />
                 ))}
               </div>
             );
           })()}
-          <div className="md:col-span-2 lg:col-span-1 p-4 md:p-5">
+          <div className="md:col-span-2 lg:col-span-1 p-4 md:p-5 space-y-6">
             <MarketBriefs />
+            <PlatformConfidence />
           </div>
         </section>
 
@@ -254,7 +279,7 @@ export default async function HomePage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {rest.slice(0, 8).map((a) => (
-              <ArticleCard key={a.id} {...a} publishedAt={a.publishedAt?.toISOString()} />
+              <ArticleCard key={a.id} {...a} publishedAt={a.publishedAt?.toISOString()} trendingDelta={trendingMap.get(a.marketId)?.delta ?? null} />
             ))}
           </div>
         </section>
@@ -270,12 +295,21 @@ export default async function HomePage() {
           <p className="text-sm text-[var(--color-ink-light)] mt-1 italic">
             Est. 2025 — Tomorrow&apos;s News, Today&apos;s Odds
           </p>
+          {/* V4 brand-thesis line — per CMO review §2, this is the single line that
+              should appear on every brand surface. */}
+          <p className="fe-v4-tagline">
+            —— Printed by a machine that has read more newspapers than you. ——
+          </p>
           <p className="mt-4 text-[11px] uppercase tracking-wider text-[var(--color-ink-faded)]">
             <Link href="/about" className="underline hover:text-[var(--color-accent-blue)] transition-colors">About</Link>
+            <span className="mx-2" aria-hidden>·</span>
+            <Link href="/transparency" className="underline hover:text-[var(--color-accent-blue)] transition-colors">Transparency</Link>
             <span className="mx-2" aria-hidden>·</span>
             <Link href="/editions" className="underline hover:text-[var(--color-accent-blue)] transition-colors">Past editions</Link>
             <span className="mx-2" aria-hidden>·</span>
             <Link href="/search" className="underline hover:text-[var(--color-accent-blue)] transition-colors">Search</Link>
+            <span className="mx-2" aria-hidden>·</span>
+            <Link href="/accuracy" className="underline hover:text-[var(--color-accent-blue)] transition-colors">Track Record</Link>
           </p>
         </footer>
       </main>

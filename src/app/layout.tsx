@@ -9,6 +9,7 @@ import {
 import "./globals.css";
 import { EditionProvider } from "@/components/EditionProvider";
 import { AdminPlaycardsPanel } from "@/components/AdminPlaycardsPanel";
+import { getAppUrl } from "@/lib/url";
 
 import { Analytics } from "@vercel/analytics/react";
 
@@ -43,6 +44,10 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  // Resolves any relative URL in metadata (OG, twitter:image, alternates) against
+  // the canonical host. Without this, Next.js logs a warning and falls back to
+  // localhost — which silently breaks every social share.
+  metadataBase: new URL(getAppUrl()),
   title: "The Future Express — Tomorrow's News, Today's Odds",
   description:
     "The newspaper of record for what hasn't happened yet. Prediction market intelligence from Polymarket and Kalshi, in researched articles.",
