@@ -13,6 +13,7 @@ import { EmbedSection } from "@/components/EmbedSection";
 import { AccuracyBadge } from "@/components/AccuracyBadge";
 import { PlatformConfidence } from "@/components/PlatformConfidence";
 import { WhatIfGenerator } from "@/components/WhatIfGenerator";
+import { LiveReaderCount } from "@/components/LiveReaderCount";
 import { getAppUrl } from "@/lib/url";
 
 import Image from "next/image";
@@ -264,6 +265,9 @@ export default async function ArticlePage({
         {/* V4 FILED line — Reuters-style filing slug + ML CONFIDENCE token */}
         <div className="fe-v4-filed mb-6" aria-label="Filing dispatch line">
           {filedLine}
+        </div>
+        <div className="mb-4">
+          <LiveReaderCount articleSlug={slug} />
         </div>
 
         <ShareBar

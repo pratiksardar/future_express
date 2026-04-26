@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Masthead } from "@/components/Masthead";
 import { AgentIdentityStrip } from "@/components/AgentIdentityStrip";
 import { SectionNav } from "@/components/SectionNav";
+import { getAgentIdentity } from "@/lib/agent/identity";
 
 export const dynamic = "force-dynamic";
 
@@ -20,17 +21,7 @@ export const dynamic = "force-dynamic";
  * the masthead.
  */
 
-// TODO(wallet-live-data): wire real balance + tx from
-// src/lib/blockchain/base/editorWallet.ts:24 (checkEditorWalletBalance)
-// and the Hedera mirror node helper in src/lib/blockchain/hedera/client.ts.
-const EDITOR_WALLET = "0x0D2e1e3bE6A63A08EaF42c69DaD6900a748B8Ed9";
 const EDITOR_AGENT = "editor@futureexpress.eth";
-const EDITOR_BALANCE = "0.034 ETH";
-const HEDERA_TX = "0.0.4928421@1714169643.391284561";
-const PUBLISH_TS = "2026-04-26 22:14:03 UTC";
-
-const BASESCAN_URL = `https://basescan.org/address/${EDITOR_WALLET}`;
-const HEDERA_MIRROR_URL = `https://hashscan.io/mainnet/transaction/${HEDERA_TX}`;
 // TODO(github-repo): swap to real repo URL once public; left as `#` per spec
 const GITHUB_URL = "#";
 
@@ -40,23 +31,57 @@ export const metadata = {
     "How an autonomous AI editor publishes this newspaper, pays its own bills, and logs every issue to Hedera Hashgraph.",
 };
 
-export default function TransparencyPage() {
+function formatLastVerified(fetchedAt: number): string {
+  const delta = Math.max(0, Math.floor(Date.now() / 1000) - fetchedAt);
+  if (delta < 5) return "just now";
+  if (delta < 60) return `${delta} seconds ago`;
+  if (delta < 3600) {
+    const m = Math.floor(delta / 60);
+    return `${m} minute${m === 1 ? "" : "s"} ago`;
+  }
+  const h = Math.floor(delta / 3600);
+  return `${h} hour${h === 1 ? "" : "s"} ago`;
+}
+
+function formatPublishTs(unixSeconds: number | null): string {
+  if (unixSeconds == null) return "—";
+  const d = new Date(unixSeconds * 1000);
+  // Reuters-style UTC slug
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  const hh = String(d.getUTCHours()).padStart(2, "0");
+  const mi = String(d.getUTCMinutes()).padStart(2, "0");
+  const ss = String(d.getUTCSeconds()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss} UTC`;
+}
+
+export default async function TransparencyPage() {
+  const identity = await getAgentIdentity();
+  const networkLabel =
+    identity.network === "base-sepolia"
+      ? "Base Sepolia (chain id 84532)"
+      : "Base mainnet (chain id 8453)";
+  const balanceLine = `${identity.balanceEth} ETH${identity.stale ? " (cached)" : ""}`;
+  const publishTs = formatPublishTs(identity.hederaTimestamp);
+  const lastVerified = formatLastVerified(identity.fetchedAt);
+
   const receipt = `─────────────────────────────────────────────
 END OF DISPATCH
-AGENT:      ${EDITOR_AGENT}
-WALLET:     ${EDITOR_WALLET}
-NETWORK:    Base mainnet (chain id 8453)
-BALANCE:    ${EDITOR_BALANCE}
-PUBLISHED:  ${PUBLISH_TS}
-HEDERA TX:  ${HEDERA_TX}
-MIRROR:     hashscan.io/mainnet
+AGENT:      ${identity.email}
+WALLET:     ${identity.walletAddress}
+NETWORK:    ${networkLabel}
+BALANCE:    ${balanceLine}
+PUBLISHED:  ${publishTs}
+HEDERA TX:  ${identity.hederaTx ?? "— (no dispatch yet)"}
+MIRROR:     hashscan.io/${identity.network === "base-sepolia" ? "testnet" : "mainnet"}
 SOURCES:    Polymarket · Kalshi
 LICENSE:    CC BY-NC 4.0
 ─────────────────────────────────────────────`;
 
   return (
     <div className="paper-texture min-h-screen">
-      <AgentIdentityStrip />
+      <AgentIdentityStrip identity={identity} />
       <Masthead />
       <SectionNav />
 
@@ -79,24 +104,34 @@ LICENSE:    CC BY-NC 4.0
           {receipt}
         </pre>
 
+        <p className="mt-3 text-xs font-[family-name:var(--font-data)] text-[var(--color-ink-light)]">
+          Last verified {lastVerified}
+          {identity.stale ? " · upstream RPC unavailable, showing cached snapshot" : ""}
+          {" · "}Press halts when balance drops below 0.001 ETH (the publishing-gate threshold).
+        </p>
+
         <div className="mt-6 flex flex-wrap gap-3 text-sm font-[family-name:var(--font-data)]">
           <Link
-            href={BASESCAN_URL}
+            href={identity.basescanUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="underline hover:text-[var(--color-accent-blue)] transition-colors"
           >
             ► Verify wallet on Basescan
           </Link>
-          <span aria-hidden className="text-[var(--color-ink-faded)]">·</span>
-          <Link
-            href={HEDERA_MIRROR_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline hover:text-[var(--color-accent-blue)] transition-colors"
-          >
-            ► Verify dispatch on Hedera
-          </Link>
+          {identity.hederaExplorerUrl ? (
+            <>
+              <span aria-hidden className="text-[var(--color-ink-faded)]">·</span>
+              <Link
+                href={identity.hederaExplorerUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-[var(--color-accent-blue)] transition-colors"
+              >
+                ► Verify dispatch on Hedera
+              </Link>
+            </>
+          ) : null}
           <span aria-hidden className="text-[var(--color-ink-faded)]">·</span>
           <Link
             href={GITHUB_URL}

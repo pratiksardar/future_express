@@ -310,6 +310,30 @@ export const userPredictions = pgTable(
   ]
 );
 
+// ── Email Subscribers (Daily Digest) ──
+
+export const subscribers = pgTable(
+  "subscribers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: text("email").notNull().unique(),
+    /** active | unsubscribed | bounced */
+    status: text("status").notNull().default("active"),
+    /** Hour of the day (0-23) at which the subscriber wants their digest, in their local TZ. */
+    preferredSendHour: integer("preferred_send_hour").notNull().default(7),
+    /** IANA timezone string, e.g. "America/New_York". */
+    timezone: text("timezone").notNull().default("UTC"),
+    unsubscribeToken: uuid("unsubscribe_token").notNull().defaultRandom(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    lastSentAt: timestamp("last_sent_at"),
+  },
+  (t) => [
+    index("subscribers_status_idx").on(t.status),
+    index("subscribers_unsubscribe_token_idx").on(t.unsubscribeToken),
+    index("subscribers_send_hour_idx").on(t.preferredSendHour),
+  ]
+);
+
 // ── Type exports ──
 
 export type Market = typeof markets.$inferSelect;
@@ -330,3 +354,5 @@ export type AccuracyReport = typeof accuracyReports.$inferSelect;
 export type DailyChallenge = typeof dailyChallenges.$inferSelect;
 export type UserPrediction = typeof userPredictions.$inferSelect;
 export type NewUserPrediction = typeof userPredictions.$inferInsert;
+export type Subscriber = typeof subscribers.$inferSelect;
+export type NewSubscriber = typeof subscribers.$inferInsert;

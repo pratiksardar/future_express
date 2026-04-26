@@ -50,6 +50,13 @@
       "when": 1775991762952,
       "tag": "0006_daily_challenge",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1777222697529,
+      "tag": "0007_add_subscribers",
+      "breakpoints": true
     }
   ]
 }

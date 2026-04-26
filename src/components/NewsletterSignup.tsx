@@ -2,66 +2,93 @@
 
 import { useState } from "react";
 
-const SUBSTACK_URL = process.env.NEXT_PUBLIC_SUBSTACK_URL ?? "https://substack.com";
-const BEEHIIV_URL = process.env.NEXT_PUBLIC_BEEHIIV_URL ?? "";
-
+/**
+ * Newsletter signup form.
+ *
+ * Posts to our own /api/subscribe (Resend-backed daily digest). The browser
+ * detects its own IANA timezone via Intl so the cron can deliver locally at
+ * 7AM. We do NOT prompt the user for a TZ — the inferred one is correct
+ * 99% of the time.
+ */
 export function NewsletterSignup() {
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
-
-  const actionUrl = BEEHIIV_URL || `${SUBSTACK_URL}/api/v1/free`;
-  const isSubstack = !BEEHIIV_URL;
+  const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">(
+    "idle"
+  );
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
     setStatus("loading");
+    setErrorMessage(null);
+
     try {
-      if (isSubstack) {
-        window.open(`${SUBSTACK_URL}/subscribe?email=${encodeURIComponent(email)}`, "_blank");
+      const timezone =
+        typeof Intl !== "undefined"
+          ? Intl.DateTimeFormat().resolvedOptions().timeZone
+          : "UTC";
+
+      const res = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), timezone }),
+      });
+
+      if (res.ok) {
         setStatus("done");
-      } else {
-        const res = await fetch(actionUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: email.trim() }),
-        });
-        setStatus(res.ok ? "done" : "error");
+        return;
       }
+
+      let message = "Something went wrong. Try again.";
+      try {
+        const data = (await res.json()) as { error?: string };
+        if (data?.error) message = data.error;
+      } catch {
+        // ignore — keep default message
+      }
+      setErrorMessage(message);
+      setStatus("error");
     } catch {
+      setErrorMessage("Network error — please try again.");
       setStatus("error");
     }
   };
 
   return (
     <section className="py-8 border-t border-[var(--color-rule)]">
-      <h2 className="section-title mb-2">
-        Subscribe to the Express
-      </h2>
+      <h2 className="section-title mb-2">Subscribe to the Express</h2>
       <p className="text-sm text-[var(--color-ink-medium)] mb-4 font-[family-name:var(--font-sub)] italic">
-        Receive the morrow&apos;s intelligence and exclusive predictions.
+        The morrow&apos;s intelligence, delivered to your inbox at 7 of the morning, your local time.
       </p>
-      <form onSubmit={submit} className="flex flex-wrap gap-2 max-w-md">
-        <input
-          type="email"
-          placeholder="Your email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="flex-1 min-w-[200px] px-4 py-2 border border-[var(--color-rule)] bg-[var(--color-paper-cream)] text-[var(--color-ink)] font-[family-name:var(--font-body)]"
-        />
-        <button
-          type="submit"
-          disabled={status === "loading"}
-          className="px-6 py-2 bg-[var(--color-ink)] text-[var(--color-paper)] font-bold uppercase tracking-wider text-sm font-[family-name:var(--font-ui)] hover:bg-[var(--color-accent-blue)] transition-colors disabled:opacity-60"
-        >
-          {status === "loading" ? "…" : status === "done" ? "Done" : "Subscribe"}
-        </button>
-      </form>
-      {status === "done" && (
-        <p className="text-sm text-[var(--color-spot-green)] mt-2">Check your inbox to confirm.</p>
+      {status === "done" ? (
+        <p className="text-sm text-[var(--color-spot-green)] font-[family-name:var(--font-sub)] italic">
+          Welcome aboard. The next dispatch shall arrive at dawn.
+        </p>
+      ) : (
+        <form onSubmit={submit} className="flex flex-wrap gap-2 max-w-md">
+          <input
+            type="email"
+            placeholder="Your email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            aria-label="Email address"
+            className="flex-1 min-w-[200px] px-4 py-2 border border-[var(--color-rule)] bg-[var(--color-paper-cream)] text-[var(--color-ink)] font-[family-name:var(--font-body)]"
+          />
+          <button
+            type="submit"
+            disabled={status === "loading"}
+            className="px-6 py-2 bg-[var(--color-ink)] text-[var(--color-paper)] font-bold uppercase tracking-wider text-sm font-[family-name:var(--font-ui)] hover:bg-[var(--color-accent-blue)] transition-colors disabled:opacity-60"
+          >
+            {status === "loading" ? "Sending…" : "Subscribe"}
+          </button>
+        </form>
       )}
       {status === "error" && (
-        <p className="text-sm text-[var(--color-spot-red)] mt-2">Something went wrong. Try again.</p>
+        <p className="text-sm text-[var(--color-spot-red)] mt-2">
+          {errorMessage ?? "Something went wrong. Try again."}
+        </p>
       )}
     </section>
   );

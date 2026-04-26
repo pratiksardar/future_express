@@ -323,3 +323,172 @@ The plumbing is **mostly correct**. Five issues materially affect viral plumbing
 5. 1200×675 instead of 1200×630 — gets cropped on LinkedIn + WhatsApp + iMessage.
 
 No code changes were made by this audit.
+
+---
+
+## Manual Verification Procedure
+
+**Time budget:** 10 minutes. Run before every Phase 1 launch sweep — the
+five fixes above are applied in code, but only manual verification on real
+platforms catches the regressions that don't show up in static analysis
+(image-proxy caches, login-walled validators, Apple Link Presentation
+peculiarities, etc.).
+
+The companion automated kit (`scripts/og-verify.ts` + `scripts/og-screenshot.ts`
++ the internal `/og-verify` dashboard page) does the bulk-fetch work for you.
+You only ever paste the platform URL into one DM-to-self per platform.
+
+### Step 1 — Pick a real article URL (~30s)
+
+Either:
+- **Visit `/og-verify`** (internal admin page; not in nav). It lists the 10
+  most recent articles with inline OG image previews and "Test on" buttons
+  for every public validator. Click "→ article" or copy a slug from the
+  page. Choose one that has both a long headline and a non-null probability
+  so the playcard exercises the real layout.
+- Or grab a slug straight from the live site / DB (`/api/articles?limit=1`).
+
+### Step 2 — Run the verifier script (~45s)
+
+```bash
+npx tsx scripts/og-verify.ts <slug>
+# or auto-pick the most recent article:
+npx tsx scripts/og-verify.ts
+```
+
+This:
+- fetches the OG image from `/article/<slug>/opengraph-image` and saves
+  it to `/tmp/og-verify/<slug>-image.png`
+- scrapes the article HTML for every relevant `<meta>` tag
+- writes `/tmp/og-verify/REPORT.md`
+
+**Open the report.** Confirm:
+- HTTP status: `200`
+- Content-Type: `image/png`
+- Dimensions: **1200×630** (or 1200×675 with a known-acceptable crop note)
+- Size: **< 300 KB** (the WhatsApp hard cap)
+- Required meta tags all present (no "Missing:" line at the top of §2)
+- No `og:image` content beginning `http://localhost`
+
+If any of those fail → jump to the **fix-on-bug decision tree** below
+before continuing.
+
+### Step 3 — Run the public validators (~3 min)
+
+The report emits four one-click URLs at the bottom. Open each and screenshot
+the result.
+
+| Validator | What you're checking |
+|---|---|
+| **opengraph.xyz** | Aggregated unfurl preview + every meta tag detected. Cross-check: does it list `og:image:width=1200`, `og:image:height=630`, `og:image:alt`, `twitter:image:alt`, `og:url`? Does the rendered card image match `/tmp/og-verify/<slug>-image.png`? |
+| **metatags.io** | Side-by-side Google / Facebook / Twitter / LinkedIn previews. Look for "image too small/large" warnings. |
+| **LinkedIn Post Inspector** | Forces LinkedIn to refresh its cache for the URL. Click "Inspect". Confirm large image card, correct title/description. If "Cannot inspect" — URL is unreachable from LinkedIn's crawlers (firewall? robots.txt?). |
+| **Twitter cards-dev** | Deprecated for new accounts. If it errors, paste the URL into a draft post on x.com/compose/post — the unfurl card appears in the composer. |
+
+Optional but recommended for visual evidence: run
+
+```bash
+npx tsx scripts/og-screenshot.ts <slug>
+```
+
+This drives the gstack browse daemon to capture opengraph.xyz, LinkedIn
+Post Inspector, and metatags.io as PNGs in `/tmp/og-verify/`.
+
+### Step 4 — DM-yourself sweep (~5 min)
+
+These platforms expose **no public validator**. The only way to verify is
+to paste the URL into a private channel / DM-to-self and watch the unfurl.
+
+| Platform | Where to paste | What "good" looks like | Common bug indicators |
+|---|---|---|---|
+| **Discord** | DM-to-self in any private server | Large embed image (not thumbnail) + headline + subhead within ~3s | Tiny thumbnail (missing width/height); "loading…" forever (image > 8 MB); old image after fix (Discord proxy cached — append `?v=2`) |
+| **Slack** | DM-to-self / `#test-personal` | Image + title + description + site name unfurl | No unfurl (URL not HTTPS, robots-blocked, or Slackbot still crawling — wait 5 min); title-only, no image (`og:image` URL not absolute HTTPS or 4xx/5xx) |
+| **iMessage** | New thread to your own number | Rich link preview with large image + title | Plain blue link (image fetch failed / > 600 KB / > 10s); **hero photo shown instead of playcard** (JSON-LD `image` priority — see §2.7) |
+| **WhatsApp** | DM-to-self ("WhatsApp Web → search yourself"). Test on **iOS and Android** | Preview card with image + title + description | Link only, no card (image > 300 KB or non-HTTPS); cropped top/bottom (1200×675 not 1.91:1 — masthead/CTA clipped); **WhatsApp caches forever per URL** — to retest after a fix, use a new slug |
+| **Telegram** | @SavedMessages | Instant preview card | No preview (image not absolute HTTPS); to force re-cache, send the URL to @WebpageBot |
+
+**Screenshot each unfurl** and dump them in a temp folder. Five screenshots,
+five seconds each — you're done.
+
+### Step 5 — Cross-cutting sanity (~1 min)
+
+Repeat the dashboard check on at least **3 distinct articles** with different
+shapes. From `/og-verify`:
+- one with no `subheadline` and short body (confirm playcard doesn't render
+  empty grey rectangle, see §2.6)
+- one with a very long headline (> 100 chars; confirm truncation works)
+- one with `probability` null (confirm odds bar hides instead of showing `0%`)
+
+### Fix-on-bug decision tree
+
+If something fails during Steps 2–4, follow the matching branch.
+
+```
+Bug?
+├─ Image route returns non-200?
+│   → Check Vercel logs / `next dev` console.
+│   → Check that the slug actually exists in the DB.
+│   → Verify opengraph-image.tsx didn't throw on the DB query.
+│
+├─ Image route returns 200 but wrong content-type?
+│   → contentType export in opengraph-image.tsx must be "image/png".
+│
+├─ Image > 300 KB?
+│   → Open /tmp/og-verify/<slug>-image.png in Preview/ImageOptim.
+│   → If much larger than expected (> 400 KB), the playcard has too many
+│     gradients/borders — see §2.3. Simplify EditorialCard.
+│   → Otherwise: bump cache headers and accept WhatsApp may degrade.
+│
+├─ og:image content starts with http://localhost?
+│   → NEXT_PUBLIC_APP_URL is wrong on the deployed env.
+│   → Fix in Vercel project env vars; redeploy.
+│
+├─ Twitter card not rendering large image?
+│   → Confirm `twitter:card = summary_large_image` is emitted.
+│   → Confirm `twitter:image:alt` is emitted (Fix 3 in §4 above).
+│   → Image must be < 5 MB and HTTPS.
+│
+├─ WhatsApp link only, no preview?
+│   → Most likely image > 300 KB (check report §1).
+│   → Or image not HTTPS.
+│   → Or fetch took > 5s (check origin latency).
+│
+├─ Discord shows wrong/old image after a fix?
+│   → Discord proxy cache. Append ?v=2 to the slug URL the first time
+│     someone shares the new card. Discord will fetch the new image.
+│
+├─ LinkedIn "Cannot inspect"?
+│   → curl -I <article-url> and confirm 200.
+│   → Check robots.txt and any middleware that might block crawlers.
+│
+├─ iMessage shows the article hero photo, not the playcard?
+│   → JSON-LD `image` field is shadowing the OG playcard. See §2.7.
+│   → Either remove the JSON-LD `image` array, or point it at the OG
+│     playcard URL.
+│
+├─ Generic globe icon / blank preview on any platform?
+│   → og:image URL must be absolute and HTTPS.
+│   → Origin must respond < 10s with `image/*` content-type.
+│   → Re-run scripts/og-verify.ts and check report §1.
+│
+├─ Cropped masthead or CTA strip?
+│   → 1200×675 (1.78:1) gets center-cropped to 1.91:1 by LinkedIn
+│     and WhatsApp. Switch to 1200×630 (Fix 5 in §4).
+│
+└─ "see more" stripping the subhead?
+    → Description > 160 chars on Twitter/LinkedIn. The metadata
+      description is sliced to 160 in page.tsx generateMetadata —
+      confirm subheadline isn't also wrapped by a different code path.
+```
+
+### Definition of done
+
+You can sign off launch verification when:
+- `/og-verify` returns 200 and renders inline previews correctly for the
+  10 most recent articles.
+- `npx tsx scripts/og-verify.ts` produces a clean `/tmp/og-verify/REPORT.md`
+  with no missing required meta tags and image size < 300 KB.
+- All four public validators (Step 3) render the correct large-image card.
+- All five DM-to-self platforms (Step 4) render the playcard, not the hero
+  photo, not a generic globe icon, not a "see more" stub.
+- The cross-cutting sanity check (Step 5) shows no broken edge cases.

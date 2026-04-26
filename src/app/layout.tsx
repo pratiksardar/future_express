@@ -9,6 +9,7 @@ import {
 import "./globals.css";
 import { EditionProvider } from "@/components/EditionProvider";
 import { AdminPlaycardsPanel } from "@/components/AdminPlaycardsPanel";
+import { BreakingNewsAlert } from "@/components/BreakingNewsAlert";
 import { getAppUrl } from "@/lib/url";
 
 import { Analytics } from "@vercel/analytics/react";
@@ -70,6 +71,7 @@ export default function RootLayout({
       className={`${playfair.variable} ${lora.variable} ${newsreader.variable} ${dmSans.variable} ${jetbrainsMono.variable}`}
     >
       <body className="antialiased" style={{ fontFamily: "var(--font-body)" }}>
+        <BreakingNewsAlert />
         <EditionProvider>{children}</EditionProvider>
         <AdminPlaycardsPanel />
         <Analytics />
