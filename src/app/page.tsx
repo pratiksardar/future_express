@@ -10,6 +10,7 @@ import { AdSlot } from "@/components/AdSlot";
 import { PlatformConfidence } from "@/components/PlatformConfidence";
 import { PushOptInPrompt } from "@/components/PushOptInPrompt";
 import { CalledItBanner } from "@/components/CalledItBanner";
+import { EditionHeader } from "@/components/EditionHeader";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { articles, markets, editions, editionArticles } from "@/lib/db/schema";
@@ -162,41 +163,53 @@ export default async function HomePage() {
       <SectionNav />
 
       <main className="max-w-[var(--max-width)] mx-auto px-[var(--space-4)] sm:px-[var(--space-5)] py-[var(--space-6)] sm:py-[var(--space-7)]">
-        <section className="grid grid-cols-1 lg:grid-cols-4 gap-0 pb-[var(--space-8)]" style={{ borderBottom: "var(--border-double)" }}>
-          <div className="lg:col-span-3 lg:pr-[var(--space-6)] lg:border-r border-[var(--color-rule)]">
-            {lead && (
-              <ArticleCard
-                headline={lead.headline}
-                subheadline={lead.subheadline}
-                slug={lead.slug}
-                category={lead.category}
-                imageUrl={lead.imageUrl}
-                probabilityAtPublish={lead.probabilityAtPublish}
-                currentProbability={lead.currentProbability}
-                publishedAt={lead.publishedAt?.toISOString()}
-                volume24h={lead.volume24h}
-                size="hero"
-                trendingDelta={trendingMap.get(lead.marketId)?.delta ?? null}
-              />
-            )}
-            {!lead && (
-              <div className="py-12 text-center text-[var(--color-ink-light)] font-[family-name:var(--font-sub)] space-y-3">
-                <p className="italic">No stories yet.</p>
-                <p className="text-sm">
-                  Run <code className="px-1.5 py-0.5 bg-[var(--color-paper-warm)] rounded">POST /api/ingest</code> with body{" "}
-                  <code className="px-1.5 py-0.5 bg-[var(--color-paper-warm)] rounded">{`{ "generateArticles": true }`}</code> to fetch markets and generate the latest edition, or wait for the 4-hour cron.
-                </p>
-                <p className="text-sm">
-                  <Link href="/editions" className="underline hover:text-[var(--color-accent-blue)]">Past editions</Link>
-                  {" · "}
-                  <Link href="/edition/1" className="underline hover:text-[var(--color-accent-blue)]">Vol. 1</Link>
-                </p>
-              </div>
-            )}
-          </div>
-          <div className="hidden lg:block lg:pl-[var(--space-6)]">
-            <div className="space-y-6">
-              {second && (
+
+        {/* V4 edition header — thin 1px top bar: edition no. / broadsheet date / ☀☾ toggle.
+            Sits above the broadsheet grid as a orientation layer for print-literate readers. */}
+        <EditionHeader editionNumber={latestEdition?.volumeNumber} />
+
+        {/* V4 five-column broadsheet grid — mobile: single column (stacked),
+            desktop (≥768px): 2fr 1fr 1fr 1fr 1fr via .fe-broadsheet-grid.
+            Lead story spans the first 2 cols (.fe-broadsheet-lead).
+            Grid classes and responsive rules defined in globals.css. */}
+        <section className="pb-[var(--space-8)]" style={{ borderBottom: "var(--border-double)" }}>
+          <div className="fe-broadsheet-grid">
+
+            {/* Lead story — spans 2 columns on desktop (.fe-broadsheet-lead) */}
+            <div className="fe-broadsheet-lead">
+              {lead ? (
+                <ArticleCard
+                  headline={lead.headline}
+                  subheadline={lead.subheadline}
+                  slug={lead.slug}
+                  category={lead.category}
+                  imageUrl={lead.imageUrl}
+                  probabilityAtPublish={lead.probabilityAtPublish}
+                  currentProbability={lead.currentProbability}
+                  publishedAt={lead.publishedAt?.toISOString()}
+                  volume24h={lead.volume24h}
+                  size="hero"
+                  trendingDelta={trendingMap.get(lead.marketId)?.delta ?? null}
+                />
+              ) : (
+                <div className="py-12 text-center text-[var(--color-ink-light)] font-[family-name:var(--font-sub)] space-y-3">
+                  <p className="italic">No stories yet.</p>
+                  <p className="text-sm">
+                    Run <code className="px-1.5 py-0.5 bg-[var(--color-paper-warm)] rounded">POST /api/ingest</code> with body{" "}
+                    <code className="px-1.5 py-0.5 bg-[var(--color-paper-warm)] rounded">{`{ "generateArticles": true }`}</code> to fetch markets and generate the latest edition, or wait for the 4-hour cron.
+                  </p>
+                  <p className="text-sm">
+                    <Link href="/editions" className="underline hover:text-[var(--color-accent-blue)]">Past editions</Link>
+                    {" · "}
+                    <Link href="/edition/1" className="underline hover:text-[var(--color-accent-blue)]">Vol. 1</Link>
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Sidebar stories — columns 3, 4, 5 of the 5-col grid */}
+            {second && (
+              <div className="fe-broadsheet-col">
                 <ArticleCard
                   headline={second.headline}
                   subheadline={second.subheadline}
@@ -209,8 +222,10 @@ export default async function HomePage() {
                   size="compact"
                   trendingDelta={trendingMap.get(second.marketId)?.delta ?? null}
                 />
-              )}
-              {third && (
+              </div>
+            )}
+            {third && (
+              <div className="fe-broadsheet-col">
                 <ArticleCard
                   headline={third.headline}
                   subheadline={third.subheadline}
@@ -223,8 +238,10 @@ export default async function HomePage() {
                   size="compact"
                   trendingDelta={trendingMap.get(third.marketId)?.delta ?? null}
                 />
-              )}
-              {fourth && (
+              </div>
+            )}
+            {fourth && (
+              <div className="fe-broadsheet-col">
                 <ArticleCard
                   headline={fourth.headline}
                   subheadline={fourth.subheadline}
@@ -237,10 +254,13 @@ export default async function HomePage() {
                   size="compact"
                   trendingDelta={trendingMap.get(fourth.marketId)?.delta ?? null}
                 />
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </section>
+
+        {/* V4 section rule — 1px ink hairline between hero grid and secondary sections */}
+        <hr className="fe-v4-section-rule" />
 
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 pt-[var(--space-8)]">
           {(() => {
@@ -272,6 +292,9 @@ export default async function HomePage() {
             <PlatformConfidence />
           </div>
         </section>
+
+        {/* V4 section rule — 1px ink hairline before "More Stories" */}
+        <hr className="fe-v4-section-rule" />
 
         <section className="pt-[var(--space-8)] mt-[var(--space-8)]" style={{ borderTop: "var(--border-double)" }}>
           <h2 className="section-title mb-5">

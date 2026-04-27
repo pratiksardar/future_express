@@ -23,20 +23,30 @@ function formatShortDate(d: Date) {
   });
 }
 
-function formatDispatchTimestamp(d: Date) {
-  // Compact UTC stamp for the wire-dispatch cursor: 2026-04-26 22:14 UTC
+/**
+ * Formats the wire-dispatch prefix in V4 spec format:
+ * DISPATCHED ── MON 27 APR 2026 · 09:41 UTC
+ * The trailing space is intentional — the cursor glyph (▮) follows inline.
+ */
+function formatDispatchPrefix(d: Date): string {
+  const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+  const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
   const iso = d.toISOString();
-  return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
+  const dayAbbr = days[d.getUTCDay()];
+  const dayNum = d.getUTCDate();
+  const monthAbbr = months[d.getUTCMonth()];
+  const year = d.getUTCFullYear();
+  const hhmm = iso.slice(11, 16);
+  return `DISPATCHED ── ${dayAbbr} ${dayNum} ${monthAbbr} ${year} · ${hhmm} UTC `;
 }
 
 export function Masthead({ compact, latestEdition, volumeNumber }: { compact?: boolean; latestEdition?: string | null; volumeNumber?: number | null }) {
-  const date = formatDate(new Date());
   const shortDate = formatShortDate(new Date());
   const { edition, setEdition } = useEdition();
 
   const displayVolume = volumeNumber ? volumeNumber.toString() : "1";
   const displayIssue = new Date().getDate().toString();
-  const dispatchStamp = formatDispatchTimestamp(new Date());
+  const dispatchPrefix = formatDispatchPrefix(new Date());
 
   const [prices, setPrices] = useState<any>(null);
   const [copied, setCopied] = useState(false);
@@ -83,11 +93,11 @@ export function Masthead({ compact, latestEdition, volumeNumber }: { compact?: b
               </Link>
             </div>
 
-            {/* Wire-dispatch cursor — blinking terminal cursor with edition meta */}
+            {/* Wire-dispatch cursor — blinking terminal cursor under the wordmark.
+                Format: DISPATCHED ── MON 27 APR 2026 · 09:41 UTC ▮
+                The ▮ cursor blinks via fe-v4-cursor CSS animation (1s steps). */}
             <div className="fe-v4-wire-dispatch">
-              <WireDispatchCursor
-                prefix={`▶ VOL ${displayVolume} · NO ${displayIssue} · DISPATCH READY · ${dispatchStamp} `}
-              />
+              <WireDispatchCursor prefix={dispatchPrefix} />
             </div>
 
             {/* Sub Issue / Cost Row */}

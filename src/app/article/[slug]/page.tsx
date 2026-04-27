@@ -80,6 +80,15 @@ function buildAsciiOddsBox(args: {
   ];
 }
 
+/**
+ * Formats the article publish date for the FILED byline.
+ * Output: "27 APR 2026" (UTC, all caps, broadsheet style).
+ */
+function formatFiledDate(d: Date): string {
+  const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+  return `${d.getUTCDate()} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -200,14 +209,11 @@ export default async function ArticlePage({
     "articleBody": article.body
   };
 
-  // V4 FILED slug — Reuters-style filing line with ML confidence score.
-  // Format: FILED 2026-04-26 22:14 UTC · AGENT editor@futureexpress · CONFIDENCE 0.86
-  // TODO(confidence-live): wire CONFIDENCE from accuracy data
-  // (src/lib/articles/accuracy.ts). Hardcoded 0.86 mirrors V4 prototype
-  // until the per-article confidence field is exposed.
-  const filedIso = article.publishedAt.toISOString();
-  const filedStamp = `${filedIso.slice(0, 10)} ${filedIso.slice(11, 16)} UTC`;
-  const filedLine = `FILED ${filedStamp} · AGENT editor@futureexpress · CONFIDENCE 0.86`;
+  // V4 FILED byline — spec format: FILED · {CATEGORY} · {DATE} · BY THE FUTURE EXPRESS INTELLIGENCE
+  // 10px JetBrains Mono, letter-spacing 0.16em (applied via .fe-v4-filed CSS class).
+  const categoryLabel = (CATEGORY_LABELS[article.category] ?? article.category).toUpperCase();
+  const filedDateStr = formatFiledDate(article.publishedAt);
+  const filedLine = `FILED · ${categoryLabel} · ${filedDateStr} · BY THE FUTURE EXPRESS INTELLIGENCE`;
 
   // Build ASCII odds box for the sidebar — same data binding as the
   // existing widget (probability, label, source, volume24h).
@@ -263,7 +269,8 @@ export default async function ArticlePage({
             timeZoneName: "short",
           })} · 5 min read
         </p>
-        {/* V4 FILED line — Reuters-style filing slug + ML CONFIDENCE token */}
+        {/* V4 FILED byline — format: FILED · {CATEGORY} · {DATE} · BY THE FUTURE EXPRESS INTELLIGENCE
+            Styled via .fe-v4-filed: 10px JetBrains Mono, letter-spacing 0.16em. */}
         <div className="fe-v4-filed mb-6" aria-label="Filing dispatch line">
           {filedLine}
         </div>
@@ -322,11 +329,10 @@ export default async function ArticlePage({
 
           <aside className="lg:col-span-1">
             <div className="sticky top-24 space-y-4">
-              {/* V4 ASCII odds box — the eye-grabbing primary visual.
-                  Same data binding as the legacy odds widget below; the
-                  ASCII frame is the screenshot moneyshot per the
-                  marketing review. */}
-              <pre className="fe-v4-odds-ascii" aria-label={`Market odds: ${prob}% — ${probLabel(prob)}`}>
+              {/* V4 ASCII odds box — fe-v4-odds-ascii (primary) + fe-v4-ascii-odds (spec alias).
+                  Box-drawing format: ┌─ MARKET ODDS ─────────────────────┐ / │ YES ██░░ {pct}% │
+                  Both class names render identically; fe-v4-ascii-odds is the spec canonical name. */}
+              <pre className="fe-v4-odds-ascii fe-v4-ascii-odds" aria-label={`Market odds: ${prob}% — ${probLabel(prob)}`}>
                 {oddsBox.map((line, i) => {
                   if (i === 2) {
                     return (

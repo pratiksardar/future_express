@@ -1226,3 +1226,174 @@ h1, h2 {
     transition: none !important;
   }
 }
+
+/* ===================================================================
+   V4 Edition Header — thin 1px top bar above the masthead cartouche
+   Left: EDITION NO. {N} · Center: broadsheet date · Right: ☀/☾ toggle
+   =================================================================== */
+
+/* ── Edition header bar ──────────────────────────────────────────── */
+.fe-v4-edition-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid var(--color-rule-dark);
+  border-bottom: 1px solid var(--color-rule-dark);
+  padding: 5px 0;
+  margin-bottom: 12px;
+  font-family: var(--font-ui);
+  font-size: var(--type-micro-size);
+  font-weight: 700;
+  letter-spacing: var(--type-micro-track);
+  text-transform: uppercase;
+  color: var(--color-ink-light);
+  font-feature-settings: "liga" 0, "calt" 0;
+}
+.fe-v4-edition-header__left,
+.fe-v4-edition-header__right {
+  flex: 1;
+  white-space: nowrap;
+}
+.fe-v4-edition-header__left { text-align: left; }
+.fe-v4-edition-header__right {
+  text-align: right;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.fe-v4-edition-header__center {
+  flex: 2;
+  text-align: center;
+  font-family: var(--font-data);
+  font-size: var(--type-micro-size);
+  letter-spacing: var(--type-micro-track);
+  color: var(--color-ink);
+  font-weight: 700;
+  font-feature-settings: "liga" 0, "calt" 0, "tnum", "lnum";
+}
+.fe-v4-edition-header__divider {
+  color: var(--color-rule-dark);
+  font-weight: 400;
+  margin: 0 2px;
+}
+/* Day/Night toggle buttons in the edition header */
+.fe-v4-edition-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 700;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: var(--color-ink-light);
+  padding: 0;
+  transition: color var(--motion-fast) var(--ease-ink);
+}
+.fe-v4-edition-toggle:hover {
+  color: var(--color-ink);
+}
+.fe-v4-edition-toggle--active {
+  color: var(--color-ink);
+}
+.fe-v4-edition-toggle:focus-visible {
+  outline: 2px solid var(--color-accent-blue);
+  outline-offset: 2px;
+}
+@media (max-width: 480px) {
+  .fe-v4-edition-header__left { display: none; }
+  .fe-v4-edition-header__center { text-align: left; }
+}
+[data-edition="night"] .fe-v4-edition-header {
+  border-color: var(--color-rule-dark);
+}
+
+/* ── Section rule — 1px ink horizontal rule between sections ─────── */
+.fe-v4-section-rule {
+  border: 0;
+  border-top: 1px solid var(--color-ink);
+  margin: 24px 0;
+  height: 0;
+}
+[data-edition="night"] .fe-v4-section-rule {
+  border-top-color: var(--color-rule-heavy);
+}
+
+/* ── Wire cursor — alias for the blinking ▮ cursor block ─────────── */
+/* Used as an inline <span> with the fe-v4-cursor animation applied.  */
+.fe-v4-wire-cursor {
+  display: inline-block;
+  font-family: var(--font-data);
+  color: var(--color-accent-gold);
+  animation: fe-v4-blink 1s steps(2, end) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fe-v4-wire-cursor { animation: none; opacity: 1; }
+}
+
+/* ── ASCII odds box — alternate class name alias ─────────────────── */
+/* The sidebar uses .fe-v4-odds-ascii; article body may use this alias */
+.fe-v4-ascii-odds {
+  font-family: var(--font-data);
+  font-size: 13px;
+  line-height: 1.32;
+  white-space: pre;
+  color: var(--color-ink);
+  background: transparent;
+  margin: 0 0 12px;
+  padding: 0;
+  overflow-x: auto;
+  font-feature-settings: "liga" 0, "calt" 0, "dlig" 0;
+  font-variant-ligatures: none;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+@media (max-width: 720px) {
+  .fe-v4-ascii-odds { font-size: 12px; line-height: 1.3; }
+}
+@media (max-width: 380px) {
+  .fe-v4-ascii-odds { font-size: 11px; line-height: 1.28; }
+}
+
+/* ── FILED byline — spec-exact: 10px JetBrains Mono, tracking 0.16em ─ */
+/* Overrides the prior .fe-v4-filed definition to match spec exactly.   */
+.fe-v4-filed {
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-ink-light);
+  border-top: 1px dashed var(--color-rule-dark);
+  border-bottom: 1px dashed var(--color-rule-dark);
+  padding: 6px 0;
+  margin: 8px 0;
+  text-transform: uppercase;
+  font-feature-settings: "liga" 0, "calt" 0, "dlig" 0;
+  font-variant-ligatures: none;
+}
+
+/* ── V4 Five-column broadsheet grid ─────────────────────────────── */
+/* Mobile: single column. Desktop (≥768px): 2fr 1fr 1fr 1fr 1fr.   */
+/* Lead story always spans the first 2 columns on desktop.           */
+.fe-broadsheet-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+@media (min-width: 768px) {
+  .fe-broadsheet-grid {
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+  }
+  .fe-broadsheet-lead {
+    grid-column: span 2;
+    padding-right: var(--space-5);
+    border-right: 1px solid var(--color-rule);
+  }
+  .fe-broadsheet-col {
+    padding-left: var(--space-4);
+    border-right: 1px solid var(--color-rule);
+  }
+  .fe-broadsheet-col:last-child {
+    border-right: none;
+  }
+}
