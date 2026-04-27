@@ -10,8 +10,7 @@ import { eq, desc } from "drizzle-orm";
 
 /** Score resolved markets every 30 minutes. */
 export const scoreResolvedMarkets = inngest.createFunction(
-  { id: "score-resolved-markets", name: "Score prediction accuracy for resolved markets" },
-  { cron: "*/30 * * * *" },
+  { id: "score-resolved-markets", name: "Score prediction accuracy for resolved markets", triggers: [{ cron: "*/30 * * * *" }] },
   async () => {
     const result = await scoreAllPendingArticles();
     return {
@@ -24,8 +23,7 @@ export const scoreResolvedMarkets = inngest.createFunction(
 
 /** Compute daily/weekly/monthly/all-time accuracy stats at midnight UTC. */
 export const computeDailyAccuracy = inngest.createFunction(
-  { id: "compute-daily-accuracy", name: "Compute platform accuracy stats" },
-  { cron: "0 0 * * *" },
+  { id: "compute-daily-accuracy", name: "Compute platform accuracy stats", triggers: [{ cron: "0 0 * * *" }] },
   async () => {
     const now = new Date();
     const results: string[] = [];
@@ -66,8 +64,7 @@ export const computeDailyAccuracy = inngest.createFunction(
 
 /** Generate an AI accuracy report every Monday at 9 AM UTC. */
 export const generateWeeklyReport = inngest.createFunction(
-  { id: "generate-weekly-accuracy-report", name: "Generate weekly AI accuracy report" },
-  { cron: "0 9 * * 1" },
+  { id: "generate-weekly-accuracy-report", name: "Generate weekly AI accuracy report", triggers: [{ cron: "0 9 * * 1" }] },
   async () => {
     // Find the latest weekly platform accuracy record
     const [latest] = await db

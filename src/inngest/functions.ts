@@ -20,8 +20,7 @@ import { sendBreakingPush, sendEditionPush } from "@/lib/push/send";
  * to fetch from Polymarket/Kalshi again until the next run.
  */
 export const editionEvery4h = inngest.createFunction(
-  { id: "edition-every-4h", name: "New edition every 4 hours (data refresh + articles)" },
-  { cron: "0 */4 * * *" },
+  { id: "edition-every-4h", name: "New edition every 4 hours (data refresh + articles)", triggers: [{ cron: "0 */4 * * *" }] },
   async () => {
     const ingest = await runIngestion();
     const edition = await runEditionPipeline();
@@ -47,8 +46,7 @@ export const editionEvery4h = inngest.createFunction(
 
 /** Optional: refresh market data every 5 min for live ticker/odds. Disable if you only want 4h fetches. */
 export const fetchMarkets = inngest.createFunction(
-  { id: "fetch-markets", name: "Fetch Polymarket & Kalshi markets" },
-  { cron: "*/5 * * * *" },
+  { id: "fetch-markets", name: "Fetch Polymarket & Kalshi markets", triggers: [{ cron: "*/5 * * * *" }] },
   async () => {
     const result = await runIngestion();
     return result;
@@ -56,8 +54,7 @@ export const fetchMarkets = inngest.createFunction(
 );
 
 export const morningEdition = inngest.createFunction(
-  { id: "morning-edition", name: "Generate Morning Edition articles" },
-  { cron: "0 12 * * *" },
+  { id: "morning-edition", name: "Generate Morning Edition articles", triggers: [{ cron: "0 12 * * *" }] },
   async () => {
     const result = await generateMorningEdition();
     return result;
@@ -65,8 +62,7 @@ export const morningEdition = inngest.createFunction(
 );
 
 export const checkBreaking = inngest.createFunction(
-  { id: "check-breaking", name: "Check for breaking probability shifts" },
-  { cron: "*/15 * * * *" },
+  { id: "check-breaking", name: "Check for breaking probability shifts", triggers: [{ cron: "*/15 * * * *" }] },
   async () => {
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
     const recent = await db
@@ -136,8 +132,7 @@ export const checkBreaking = inngest.createFunction(
  * else (including new arrivals after the spike).
  */
 export const detectBreaking = inngest.createFunction(
-  { id: "detect-breaking", name: "Detect 24h probability shifts and queue alerts" },
-  { cron: "*/5 * * * *" },
+  { id: "detect-breaking", name: "Detect 24h probability shifts and queue alerts", triggers: [{ cron: "*/5 * * * *" }] },
   async () => {
     const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
@@ -261,8 +256,7 @@ export const detectBreaking = inngest.createFunction(
  * MUST NOT crash on a missing key — that's a documented contract.
  */
 export const sendDailyDigest = inngest.createFunction(
-  { id: "send-daily-digest", name: "Send localized 7AM daily digest" },
-  { cron: "0 * * * *" },
+  { id: "send-daily-digest", name: "Send localized 7AM daily digest", triggers: [{ cron: "0 * * * *" }] },
   async ({ step }) => {
     if (!process.env.RESEND_API_KEY) {
       console.warn(

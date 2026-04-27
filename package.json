@@ -37,7 +37,7 @@
     "drizzle-orm": "^0.45.1",
     "ethers": "^6.16.0",
     "hono": "^4.12.2",
-    "inngest": "^3.52.2",
+    "inngest": "^4.2.4",
     "next": "16.1.6",
     "openai": "^6.22.0",
     "pino": "^10.3.1",
@@ -53,8 +53,8 @@
     "zod": "^4.3.6"
   },
   "optionalDependencies": {
-    "@napi-rs/canvas-linux-x64-gnu": "^0.1.100",
-    "@napi-rs/canvas-linux-arm64-gnu": "^0.1.100"
+    "@napi-rs/canvas-linux-arm64-gnu": "^0.1.100",
+    "@napi-rs/canvas-linux-x64-gnu": "^0.1.100"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

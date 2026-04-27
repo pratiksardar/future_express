@@ -14,8 +14,8 @@ export const sweepCalledItPredictions = inngest.createFunction(
   {
     id: "sweep-called-it-predictions",
     name: "Resolve user predictions for newly-settled markets",
+    triggers: [{ cron: "*/10 * * * *" }],
   },
-  { cron: "*/10 * * * *" },
   async () => {
     const result = await sweepResolvedMarkets();
     return {
