@@ -57,6 +57,41 @@
       "when": 1777222697529,
       "tag": "0007_add_subscribers",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1777800000000,
+      "tag": "0008_editions_hedera_tx",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1777224900216,
+      "tag": "0009_bitter_the_santerians",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1777224959413,
+      "tag": "0010_called_it_predictions",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1777225092968,
+      "tag": "0011_referrals",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1777225200000,
+      "tag": "0012_daily_challenge_streaks",
+      "breakpoints": true
     }
   ]
 }

@@ -9,6 +9,7 @@ import {
   sendDailyDigest,
 } from "@/inngest/functions";
 import { accuracyFunctions } from "@/inngest/accuracy";
+import { predictionFunctions } from "@/inngest/predictions";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -20,5 +21,6 @@ export const { GET, POST, PUT } = serve({
     detectBreaking,
     sendDailyDigest,
     ...accuracyFunctions,
+    ...predictionFunctions,
   ],
 });

@@ -11,6 +11,7 @@ import {
   findSubscribersDueNow,
   sendDigestToSubscriber,
 } from "@/lib/email/send";
+import { sendBreakingPush, sendEditionPush } from "@/lib/push/send";
 
 /**
  * Primary pipeline: every 4 hours we pull data from prediction markets once,
@@ -24,6 +25,22 @@ export const editionEvery4h = inngest.createFunction(
   async () => {
     const ingest = await runIngestion();
     const edition = await runEditionPipeline();
+
+    // Push fan-out: every-4h edition publish notifies subscribers with the
+    // 'edition' topic. No-op if VAPID is unset.
+    try {
+      if (edition?.editionId) {
+        await sendEditionPush({
+          title: `New edition · Vol. ${edition.volumeNumber ?? "?"}`,
+          body: `${edition.generated} new stories from Polymarket and Kalshi.`,
+          url: edition.volumeNumber ? `/edition/${edition.volumeNumber}` : "/",
+          tag: `fe-edition-${edition.editionId}`,
+        });
+      }
+    } catch (err) {
+      console.warn("[editionEvery4h] sendEditionPush failed:", err);
+    }
+
     return { ingest, edition };
   }
 );
@@ -205,6 +222,20 @@ export const detectBreaking = inngest.createFunction(
         slug: alert.slug,
         probability: alert.probabilityNow / 100,
       });
+
+      // Web Push fan-out for subscribers with the 'breaking' topic.
+      // No-ops if VAPID keys are unset; never throws past this catch.
+      try {
+        const direction = alert.delta >= 0 ? "+" : "";
+        await sendBreakingPush({
+          title: "Breaking: probability shift",
+          body: `${alert.headline} now ${alert.probabilityNow}% (${direction}${Math.round(alert.delta)}pts)`,
+          url: `/article/${alert.slug}`,
+          tag: `fe-breaking-${alert.marketId}`,
+        });
+      } catch (err) {
+        console.warn("[detectBreaking] sendBreakingPush failed:", err);
+      }
     }
 
     return {

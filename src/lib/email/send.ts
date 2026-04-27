@@ -9,6 +9,13 @@
  *   - The HTML body is rendered from `DigestEmail` (broadsheet typography only).
  *   - If `RESEND_API_KEY` is unset we DO NOT crash — we log and skip. The cron
  *     calls into us, and a missing key in dev/preview must not break Inngest.
+ *
+ * This module also owns:
+ *   - `sendWelcomeEmail` — fired from /api/subscribe immediately after signup.
+ *     Carries the new subscriber's referral code + share URL.
+ *   - The activation hook — on the FIRST successful digest send for a given
+ *     subscriber we promote any pending referral row to the `activated` stage
+ *     via `markSubscriberActivated`.
  */
 import { Resend } from "resend";
 import { render } from "@react-email/components";
@@ -24,12 +31,15 @@ import {
 } from "@/lib/db/schema";
 import { desc, eq, sql } from "drizzle-orm";
 import { getAppUrl } from "@/lib/url";
+import { getOrCreateReferralCode } from "@/lib/referral/code";
+import { markSubscriberActivated } from "@/lib/referral/funnel";
 import {
   DigestEmail,
   type DigestChallenge,
   type DigestContent,
   type DigestStory,
 } from "./digest";
+import { WelcomeEmail, type WelcomeContent } from "./welcome";
 
 const FROM_ADDRESS =
   process.env.RESEND_FROM_ADDRESS ?? "The Future Express <digest@thefutureexpress.com>";
@@ -73,6 +83,8 @@ function todayIso(): string {
  *
  * NOTE: The unsubscribeToken in the returned content is a placeholder —
  * the per-recipient token is injected when the email is actually sent.
+ * Same for `referralCode` — it's null in the shared template and filled
+ * per-recipient at send time.
  */
 export async function buildDigestContent(): Promise<DigestContent> {
   const baseUrl = getAppUrl();
@@ -203,6 +215,9 @@ export async function buildDigestContent(): Promise<DigestContent> {
     // Replaced per-recipient at send time. Stays a real UUID-shape string so
     // preview rendering doesn't crash on link generation.
     unsubscribeToken: "00000000-0000-0000-0000-000000000000",
+    // Filled per-recipient in `sendDigestToSubscriber`. Null is the safe
+    // default — the template skips the referral line if none is present.
+    referralCode: null,
   };
 }
 
@@ -246,12 +261,14 @@ export interface SendResult {
  * - Skips silently (returns "skipped_no_provider") if RESEND_API_KEY is unset.
  * - Marks subscriber as `bounced` on Resend 5xx / known bounce codes.
  * - Updates `last_sent_at` on success.
+ * - On the FIRST successful send (subscriber.activated_at was null), fires
+ *   the activation hook to promote any pending referral row to `activated`.
  */
 export async function sendDigestToSubscriber(
   subscriberId: string,
   content: DigestContent
 ): Promise<SendResult> {
-  // Load the subscriber for email + per-recipient unsubscribe token
+  // Load the subscriber for email + per-recipient unsubscribe token + activation state.
   const [sub] = await db
     .select()
     .from(subscribers)
@@ -272,12 +289,20 @@ export async function sendDigestToSubscriber(
     return { status: "skipped_no_provider" };
   }
 
+  // Make sure this subscriber has a referral code so the digest renders the
+  // CTA + the activation flow can later attribute their friends. Cheap upsert
+  // — if the row already has a code we just read it.
+  const referralCode = sub.referralCode
+    ?? (await getOrCreateReferralCode(sub.id));
+
   const personalised: DigestContent = {
     ...content,
     unsubscribeToken: sub.unsubscribeToken,
+    referralCode,
   };
 
   const { html, subject } = await renderDigestHtml(personalised);
+  const wasUnactivated = sub.activatedAt === null;
 
   try {
     const res = await client.emails.send({
@@ -310,10 +335,100 @@ export async function sendDigestToSubscriber(
       .set({ lastSentAt: new Date() })
       .where(eq(subscribers.id, subscriberId));
 
+    // Activation hook — only on the first successful send for this subscriber.
+    // Failure here MUST NOT roll back the send.
+    if (wasUnactivated) {
+      try {
+        await markSubscriberActivated(subscriberId);
+      } catch (err) {
+        console.error(
+          "[email/send] activation hook failed",
+          { subscriberId, error: err instanceof Error ? err.message : String(err) }
+        );
+      }
+    }
+
     return { status: "sent", providerId: res.data?.id };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[email/send] failed", { subscriberId, error: message });
+    return { status: "error", error: message };
+  }
+}
+
+// ── Welcome email ────────────────────────────────────────────────────────
+
+export interface SendWelcomeInput {
+  subscriberId: string;
+  email: string;
+  unsubscribeToken: string;
+  referralCode: string;
+  /** IANA timezone string. Used to localize the "you'll get the next dispatch tomorrow at X" copy indirectly via preferredSendHour. */
+  timezone: string;
+  /** 0-23. Defaults to 7 (the system default). */
+  preferredSendHour?: number;
+}
+
+export interface WelcomeSendResult {
+  status: "sent" | "skipped_no_provider" | "error";
+  providerId?: string;
+  error?: string;
+}
+
+/**
+ * Fire the one-time welcome email immediately after a subscriber signs up.
+ * Two paragraphs (see `WelcomeEmail`):
+ *   1. Confirmation + next-dispatch promise.
+ *   2. Referral code + share URL + Pro-month hook.
+ *
+ * If `RESEND_API_KEY` is unset we skip silently (same contract as the digest).
+ */
+export async function sendWelcomeEmail(
+  input: SendWelcomeInput
+): Promise<WelcomeSendResult> {
+  const client = getResendClient();
+  if (!client) {
+    console.warn(
+      "[email/send] RESEND_API_KEY not set — skipping welcome email for %s",
+      input.subscriberId
+    );
+    return { status: "skipped_no_provider" };
+  }
+
+  const baseUrl = getAppUrl();
+  const content: WelcomeContent = {
+    baseUrl,
+    referralCode: input.referralCode,
+    unsubscribeToken: input.unsubscribeToken,
+    preferredSendHour: input.preferredSendHour,
+  };
+
+  let html: string;
+  try {
+    html = await render(WelcomeEmail(content));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { status: "error", error: `render failed: ${message}` };
+  }
+
+  try {
+    const res = await client.emails.send({
+      from: FROM_ADDRESS,
+      to: input.email,
+      subject: "Welcome to The Future Express",
+      html,
+      ...(REPLY_TO ? { replyTo: REPLY_TO } : {}),
+      headers: {
+        "List-Unsubscribe": `<${baseUrl.replace(/\/$/, "")}/unsubscribe?token=${input.unsubscribeToken}>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
+    });
+    if (res.error) {
+      return { status: "error", error: res.error.message };
+    }
+    return { status: "sent", providerId: res.data?.id };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     return { status: "error", error: message };
   }
 }

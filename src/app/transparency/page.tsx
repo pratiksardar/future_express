@@ -2,7 +2,12 @@ import Link from "next/link";
 import { Masthead } from "@/components/Masthead";
 import { AgentIdentityStrip } from "@/components/AgentIdentityStrip";
 import { SectionNav } from "@/components/SectionNav";
-import { getAgentIdentity } from "@/lib/agent/identity";
+import {
+  getAgentIdentity,
+  listRecentEditionTxs,
+  truncateHederaTx,
+  type EditionLogEntry,
+} from "@/lib/agent/identity";
 
 export const dynamic = "force-dynamic";
 
@@ -56,8 +61,16 @@ function formatPublishTs(unixSeconds: number | null): string {
   return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss} UTC`;
 }
 
+function formatLogTs(d: Date | null): string {
+  if (!d) return "—";
+  return formatPublishTs(Math.floor(d.getTime() / 1000));
+}
+
 export default async function TransparencyPage() {
-  const identity = await getAgentIdentity();
+  const [identity, recentTxs] = await Promise.all([
+    getAgentIdentity(),
+    listRecentEditionTxs(10),
+  ]);
   const networkLabel =
     identity.network === "base-sepolia"
       ? "Base Sepolia (chain id 84532)"
@@ -128,7 +141,7 @@ LICENSE:    CC BY-NC 4.0
                 rel="noopener noreferrer"
                 className="underline hover:text-[var(--color-accent-blue)] transition-colors"
               >
-                ► Verify dispatch on Hedera
+                ► View on Hashscan
               </Link>
             </>
           ) : null}
@@ -140,6 +153,13 @@ LICENSE:    CC BY-NC 4.0
             ► Source (GitHub)
           </Link>
         </div>
+
+        {/* Log of recent editions — published Hedera receipts. Renders only
+            when we actually have on-chain TXs to show, so a fresh DB stays
+            quiet rather than rendering an empty table. */}
+        {recentTxs.length > 0 ? (
+          <RecentDispatchesLog entries={recentTxs} />
+        ) : null}
 
         <div className="divider-double my-10" />
 
@@ -176,7 +196,7 @@ LICENSE:    CC BY-NC 4.0
               How accurate is the AI?
             </h2>
             <p>
-              Every article is filed with a confidence score (the <code className="font-[family-name:var(--font-data)] text-[var(--color-ink)]">CONFIDENCE 0.86</code> token in the FILED line is real, not decoration). Long-running accuracy stats — by category and by lead time — are tracked on the public <Link href="/accuracy" className="underline hover:text-[var(--color-accent-blue)]">Track Record</Link> page. We surface our hits and our misses; we surface where the markets moved against the article after publication; we don&apos;t bury the times the editor was wrong. Treat individual probabilities as the market&apos;s view, not ours.
+              Every article is filed with a confidence score (the <code className="font-[family-name:var(--font-data)] text-[var(--color-ink)]">CONFIDENCE 0.86</code> token in the FILED line is real, not decoration). Long-running accuracy stats — by category and by lead time — are tracked on the public <Link href="/accuracy" className="underline hover:text-[var(--color-accent-blue)]">Track Record</Link> page. We surface our hits and our misses; we surface where the markets moved against the article after publication; we don&apos;t bury the times the editor was wrong. Treat individual probabilities as the market&apos;s view, not ours. For the math itself — Brier scoring, calibration plot, model stack — read our <Link href="/methodology" className="underline hover:text-[var(--color-accent-blue)]">methodology</Link>.
             </p>
           </div>
 
@@ -199,9 +219,69 @@ LICENSE:    CC BY-NC 4.0
           <p className="fe-v4-tagline mb-4">
             —— Printed by a machine that has read more newspapers than you. ——
           </p>
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs uppercase tracking-[0.16em] font-[family-name:var(--font-ui)] text-[var(--color-ink-light)] mb-3">
+            <Link href="/methodology" className="underline hover:text-[var(--color-accent-blue)]">Read our methodology →</Link>
+            <span aria-hidden>·</span>
+            <Link href="/accuracy" className="underline hover:text-[var(--color-accent-blue)]">Track Record</Link>
+          </div>
           <Link href="/" className="hover:text-[var(--color-accent-blue)]">← Back to Front Page</Link>
         </footer>
       </main>
     </div>
+  );
+}
+
+/**
+ * Recent dispatches — the Hedera receipt log. Surfaces the last N editions
+ * with their consensus-service TX, each linked to Hashscan. Mounted only
+ * when the DB has at least one row with a non-null hedera_tx so a cold
+ * dev environment stays quiet.
+ */
+function RecentDispatchesLog({ entries }: { entries: EditionLogEntry[] }) {
+  return (
+    <section className="mt-10">
+      <div className="section-title mb-2">Log of editions</div>
+      <h2
+        className="text-xl font-black mb-3 text-[var(--color-ink)]"
+        style={{ fontFamily: "var(--font-display)" }}
+      >
+        Most recent Hedera dispatches
+      </h2>
+      <p className="text-sm text-[var(--color-ink-medium)] mb-4 font-[family-name:var(--font-body)]">
+        Every edition is logged to Hedera Consensus Service after the articles
+        are persisted. Each TX is publicly verifiable on Hashscan.
+      </p>
+      <ul className="space-y-2 font-[family-name:var(--font-data)] text-xs">
+        {entries.map((e) => {
+          const vol = e.volumeNumber != null ? `Vol. ${e.volumeNumber}` : "Edition";
+          return (
+            <li
+              key={e.editionId}
+              className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-[var(--color-ink-faded)] pb-1.5"
+            >
+              <span className="text-[var(--color-ink)] font-bold tabular-nums w-20">
+                {vol}
+              </span>
+              <span className="text-[var(--color-ink-light)] tabular-nums">
+                {formatLogTs(e.hederaPublishedAt)}
+              </span>
+              <span className="text-[var(--color-ink-medium)] flex-1 truncate">
+                <span className="hidden sm:inline">{e.hederaTx}</span>
+                <span className="sm:hidden">{truncateHederaTx(e.hederaTx)}</span>
+              </span>
+              <Link
+                href={e.hashscanUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-[var(--color-accent-blue)] whitespace-nowrap"
+                aria-label={`View transaction ${e.hederaTx} on Hashscan`}
+              >
+                ► View on Hashscan
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }

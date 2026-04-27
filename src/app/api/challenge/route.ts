@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { dailyChallenges, userPredictions, markets } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { scorePrediction } from "@/lib/challenge/scoring";
+import { recordPlayAndUpdateStreak, type StreakState } from "@/lib/challenge/streak";
 
 function todayDate(): string {
   return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
@@ -158,6 +159,16 @@ export async function POST(req: NextRequest) {
       .onConflictDoNothing()
       .returning();
 
+    // Update the streak — idempotent for same-day re-plays. Failures here
+    // must NOT break the prediction submit (the streak is a UX concern,
+    // the score is the canonical action).
+    let streak: StreakState | null = null;
+    try {
+      streak = await recordPlayAndUpdateStreak(sessionId, date);
+    } catch (e) {
+      console.error("[challenge POST] streak update failed", e);
+    }
+
     // If conflict (already submitted), return existing score
     if (!saved) {
       const [existing] = await db
@@ -176,10 +187,11 @@ export async function POST(req: NextRequest) {
         score: existing?.score ?? score,
         actual: existing?.actualProbability ?? actual,
         alreadySubmitted: true,
+        streak,
       });
     }
 
-    return NextResponse.json({ score, actual });
+    return NextResponse.json({ score, actual, streak });
   } catch (err) {
     console.error("[challenge POST]", err);
     return NextResponse.json({ error: "Failed to save prediction" }, { status: 500 });

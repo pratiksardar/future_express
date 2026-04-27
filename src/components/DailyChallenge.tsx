@@ -1,7 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { getAccuracyLabel } from "@/lib/challenge/scoring";
+import {
+  buildSevenDayCalendar,
+  todayIso,
+  type StreakState,
+  type StreakDay,
+} from "@/lib/challenge/streak-shared";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -21,6 +27,7 @@ type SubmittedResult = {
   score: number;
   actual: number;
   alreadySubmitted?: boolean;
+  streak?: StreakState | null;
 };
 
 type BlockTier = "hit" | "warm" | "cool" | "miss";
@@ -86,6 +93,44 @@ const CATEGORY_LABELS: Record<string, string> = {
   world: "World",
 };
 
+// ── Streak constants ───────────────────────────────────────────────────────────
+
+/**
+ * Milestone thresholds that trigger the celebratory toast.
+ * Named for the share text and toast copy.
+ * Broadsheet aesthetic — terse, declarative.
+ */
+const STREAK_MILESTONES: { days: number; label: string; tagline: string }[] = [
+  { days: 7, label: "ONE WEEK STREAK", tagline: "The press is impressed." },
+  { days: 14, label: "FORTNIGHT STREAK", tagline: "A regular subscriber now." },
+  { days: 30, label: "ONE MONTH STREAK", tagline: "Senior correspondent status." },
+  { days: 100, label: "CENTURY STREAK", tagline: "Editor-in-Chief, undeniably." },
+];
+
+const STREAK_MILESTONES_LS_KEY = "tfe_streak_milestones_seen";
+
+function loadSeenMilestones(): number[] {
+  try {
+    const raw = localStorage.getItem(STREAK_MILESTONES_LS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (Array.isArray(parsed)) {
+      return parsed.filter((n): n is number => typeof n === "number");
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+function persistSeenMilestones(seen: number[]): void {
+  try {
+    localStorage.setItem(STREAK_MILESTONES_LS_KEY, JSON.stringify(seen));
+  } catch {
+    // best-effort — quota errors are non-fatal
+  }
+}
+
 // ── CSS-square result block (the on-screen share grid) ─────────────────────────
 
 function ResultBlock({
@@ -107,6 +152,102 @@ function ResultBlock({
       aria-hidden={ariaLabel ? undefined : true}
     />
   );
+}
+
+// ── Streak counter (top-of-card) ───────────────────────────────────────────────
+
+function FlameIcon() {
+  // Compact flame — broadsheet engraving rather than emoji.
+  return (
+    <svg
+      className="challenge-streak-flame"
+      viewBox="0 0 14 16"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M7 0c0 3-3 4-3 7a3 3 0 0 0 1.2 2.4c0-1.4.5-2.4 1.3-2.4.6 0 1 .5 1 1.4 0 .9-.5 1.4-.5 2.4a1.5 1.5 0 0 0 1.5 1.5c.5 0 1-.3 1.3-.7.5 1.4-.7 3.4-3.8 3.4A4 4 0 0 1 0 11c0-4 4-5 4-9 2 1 3 2 3 4Z" />
+    </svg>
+  );
+}
+
+function StreakCounter({
+  streak,
+  pulse,
+  today,
+}: {
+  streak: StreakState;
+  pulse: boolean;
+  today: string;
+}) {
+  const days: StreakDay[] = useMemo(
+    () => buildSevenDayCalendar(streak, today),
+    [streak, today]
+  );
+
+  return (
+    <div
+      className="challenge-streak"
+      role="group"
+      aria-label={`${streak.current} day streak`}
+    >
+      <div className="challenge-streak-label">
+        <FlameIcon />
+        <span>
+          DAY{" "}
+          <span
+            className="challenge-streak-num"
+            data-pulse={pulse ? "true" : undefined}
+            aria-live="polite"
+          >
+            {streak.current}
+          </span>
+        </span>
+        {streak.longest > 0 ? (
+          <span className="challenge-streak-best">
+            Best: {streak.longest}
+          </span>
+        ) : null}
+      </div>
+      <div
+        className="challenge-streak-grid"
+        role="img"
+        aria-label="Last seven days"
+      >
+        {days.map((day) => (
+          <span
+            key={day.date}
+            className="challenge-streak-dot"
+            data-day-state={day.state}
+            title={day.date}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StreakBanner({ streak }: { streak: StreakState }) {
+  // At-risk: streak alive but today not yet played.
+  if (streak.streakAtRisk) {
+    return (
+      <p className="challenge-streak-banner" data-tone="risk" role="status">
+        Your {streak.current}-day streak is at risk. Play today to keep it.
+      </p>
+    );
+  }
+  // Recently broken (current = 0, has a longest > 0, grace not used recently).
+  if (
+    streak.current === 0 &&
+    streak.longest > 0 &&
+    streak.graceAvailable
+  ) {
+    return (
+      <p className="challenge-streak-banner" role="status">
+        Use your grace day — play now to recover your streak.
+      </p>
+    );
+  }
+  return null;
 }
 
 // ── Score reveal (per-step) ────────────────────────────────────────────────────
@@ -414,9 +555,11 @@ function MarketStep({
 function FinalSummary({
   results,
   date,
+  streak,
 }: {
   results: SubmittedResult[];
   date: string;
+  streak: StreakState | null;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -424,6 +567,7 @@ function FinalSummary({
   const max = results.length * 100;
   const overallScore = Math.round(total / Math.max(results.length, 1));
   const overallLabel = getAccuracyLabel(overallScore);
+  const overallPct = Math.round((total / Math.max(max, 1)) * 100);
 
   // CRITICAL: the clipboard payload keeps Unicode emoji blocks so that
   // Twitter / Discord / WhatsApp render them correctly when pasted.
@@ -433,7 +577,17 @@ function FinalSummary({
     [results]
   );
 
-  const shareText = `Daily Prediction Challenge 🔮\n${formatDate(date)}\n${shareEmojiBlocks}\nScore: ${total}/${max}\nPlay at thefutureexpress.com/challenge`;
+  // Compact share text — adds a streak line at the top when active.
+  const shareText = useMemo(() => {
+    const lines: string[] = [`The Future Express · ${date}`];
+    if (streak && streak.current > 0) {
+      lines.push(`🔥 DAY ${streak.current}`);
+    }
+    lines.push(shareEmojiBlocks);
+    lines.push(`SCORE: ${overallPct}%`);
+    lines.push("https://thefutureexpress.com/challenge");
+    return lines.join("\n");
+  }, [date, streak, shareEmojiBlocks, overallPct]);
 
   const handleShare = useCallback(async () => {
     try {
@@ -593,21 +747,105 @@ function FinalSummary({
   );
 }
 
+// ── Milestone toast ────────────────────────────────────────────────────────────
+
+function MilestoneToast({
+  milestone,
+  onDismiss,
+}: {
+  milestone: { days: number; label: string; tagline: string };
+  onDismiss: () => void;
+}) {
+  useEffect(() => {
+    const t = setTimeout(onDismiss, 5000);
+    return () => clearTimeout(t);
+  }, [onDismiss]);
+
+  return (
+    <div
+      className="challenge-milestone-toast"
+      role="status"
+      aria-live="polite"
+      onClick={onDismiss}
+    >
+      {milestone.label}
+      <small>{milestone.tagline}</small>
+    </div>
+  );
+}
+
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export function DailyChallenge({ initial }: { initial: ChallengeData }) {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [results, setResults] = useState<SubmittedResult[]>([]);
+  const [streak, setStreak] = useState<StreakState | null>(null);
+  const [streakPulse, setStreakPulse] = useState(false);
+  const [milestone, setMilestone] = useState<
+    (typeof STREAK_MILESTONES)[number] | null
+  >(null);
+  const lastStreakValueRef = useRef<number>(0);
   const isDone = results.length === initial.markets.length;
 
+  // Bootstrap session id (client-side only).
   useEffect(() => {
     setSessionId(getOrCreateSessionId());
   }, []);
 
+  // Fetch initial streak once we have the session id.
+  useEffect(() => {
+    if (!sessionId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/challenge/streak?sessionId=${encodeURIComponent(sessionId)}`,
+          { cache: "no-store" }
+        );
+        if (!res.ok) return;
+        const data = (await res.json()) as StreakState;
+        if (!cancelled) {
+          setStreak(data);
+          lastStreakValueRef.current = data.current;
+        }
+      } catch {
+        // best-effort; UI degrades gracefully without streak
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
+
   const handleStepComplete = useCallback((result: SubmittedResult) => {
     setResults((prev) => [...prev, result]);
     setCurrentStep((prev) => prev + 1);
+
+    // Update streak state from the submission response.
+    if (result.streak) {
+      const next = result.streak;
+      setStreak((prev) => {
+        const prevValue = prev?.current ?? lastStreakValueRef.current;
+        if (next.current !== prevValue) {
+          setStreakPulse(true);
+          // Clear pulse after the animation completes.
+          setTimeout(() => setStreakPulse(false), 360);
+        }
+        return next;
+      });
+      lastStreakValueRef.current = next.current;
+
+      // Milestone check — only fire crossings, only once per session.
+      const seen = loadSeenMilestones();
+      const crossed = STREAK_MILESTONES.find(
+        (m) => next.current >= m.days && !seen.includes(m.days)
+      );
+      if (crossed) {
+        setMilestone(crossed);
+        persistSeenMilestones([...seen, crossed.days]);
+      }
+    }
   }, []);
 
   return (
@@ -632,6 +870,18 @@ export function DailyChallenge({ initial }: { initial: ChallengeData }) {
 
       {/* Body */}
       <div className="challenge-card">
+        {/* Streak counter + at-risk banner — top of card, both pre and post submit */}
+        {sessionId && streak ? (
+          <>
+            <StreakCounter
+              streak={streak}
+              pulse={streakPulse}
+              today={todayIso()}
+            />
+            <StreakBanner streak={streak} />
+          </>
+        ) : null}
+
         {!sessionId ? (
           <p
             style={{
@@ -645,7 +895,7 @@ export function DailyChallenge({ initial }: { initial: ChallengeData }) {
             Loading challenge…
           </p>
         ) : isDone ? (
-          <FinalSummary results={results} date={initial.date} />
+          <FinalSummary results={results} date={initial.date} streak={streak} />
         ) : (
           <MarketStep
             key={currentStep}
@@ -671,6 +921,14 @@ export function DailyChallenge({ initial }: { initial: ChallengeData }) {
           One edition per day &mdash; predictions are anonymous
         </p>
       )}
+
+      {/* Milestone toast (broadsheet, not bird) */}
+      {milestone ? (
+        <MilestoneToast
+          milestone={milestone}
+          onDismiss={() => setMilestone(null)}
+        />
+      ) : null}
     </div>
   );
 }

@@ -8,6 +8,8 @@ import { NewsletterSignup } from "@/components/NewsletterSignup";
 import { Classifieds } from "@/components/Classifieds";
 import { AdSlot } from "@/components/AdSlot";
 import { PlatformConfidence } from "@/components/PlatformConfidence";
+import { PushOptInPrompt } from "@/components/PushOptInPrompt";
+import { CalledItBanner } from "@/components/CalledItBanner";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { articles, markets, editions, editionArticles } from "@/lib/db/schema";
@@ -151,6 +153,7 @@ export default async function HomePage() {
           wallet narrative is the brand surface but the full hex moves to a
           dedicated page so Wedge A (finance pros) doesn't bounce. */}
       <AgentIdentityStrip />
+      <CalledItBanner />
       <Masthead
         latestEdition={mastheadEditionLabel}
         volumeNumber={latestEdition?.volumeNumber}
@@ -310,9 +313,12 @@ export default async function HomePage() {
             <Link href="/search" className="underline hover:text-[var(--color-accent-blue)] transition-colors">Search</Link>
             <span className="mx-2" aria-hidden>·</span>
             <Link href="/accuracy" className="underline hover:text-[var(--color-accent-blue)] transition-colors">Track Record</Link>
+            <span className="mx-2" aria-hidden>·</span>
+            <Link href="/methodology" className="underline hover:text-[var(--color-accent-blue)] transition-colors">Methodology</Link>
           </p>
         </footer>
       </main>
+      <PushOptInPrompt />
     </div>
   );
 }

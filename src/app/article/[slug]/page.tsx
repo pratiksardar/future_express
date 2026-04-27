@@ -11,6 +11,7 @@ import { UniswapSwapWidget } from "@/components/UniswapSwapWidget";
 import { ShareBar } from "@/components/ShareBar";
 import { EmbedSection } from "@/components/EmbedSection";
 import { AccuracyBadge } from "@/components/AccuracyBadge";
+import { PredictMarketButton } from "@/components/PredictMarketButton";
 import { PlatformConfidence } from "@/components/PlatformConfidence";
 import { WhatIfGenerator } from "@/components/WhatIfGenerator";
 import { LiveReaderCount } from "@/components/LiveReaderCount";
@@ -417,6 +418,12 @@ export default async function ArticlePage({
                 <p className="text-[10px] text-[var(--color-ink-faded)] mb-2">
                   We may earn a commission if you sign up or trade.
                 </p>
+                <PredictMarketButton
+                  marketId={market.id}
+                  articleId={article.id}
+                  currentProbability={prob}
+                  marketTitle={market.title}
+                />
               </div>
               <div>
                 <PlatformConfidence />

@@ -78,6 +78,12 @@ export interface DigestContent {
   baseUrl: string;
   /** Per-recipient unsubscribe token (NOT the subscriber id). */
   unsubscribeToken: string;
+  /**
+   * Per-recipient 8-char referral code. When present, the digest renders a
+   * single-line referral CTA above the footer. Omitted in preview rendering
+   * and in the digest fallback path for legacy subscribers without a code.
+   */
+  referralCode?: string | null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -103,6 +109,10 @@ function articleUrl(baseUrl: string, slug: string): string {
 
 function unsubscribeUrl(baseUrl: string, token: string): string {
   return `${baseUrl.replace(/\/$/, "")}/unsubscribe?token=${token}`;
+}
+
+function referralShareUrl(baseUrl: string, code: string): string {
+  return `${baseUrl.replace(/\/$/, "")}/?ref=${encodeURIComponent(code)}`;
 }
 
 // ── Subcomponents ─────────────────────────────────────────────────────────
@@ -330,6 +340,47 @@ function ChallengeTeaser({ challenge }: { challenge: DigestChallenge }) {
   );
 }
 
+/**
+ * Single-line referral CTA — broadsheet styling, no emoji, no shouting.
+ * Renders just above the footer when the recipient has a referral code.
+ */
+function ReferralLine({
+  baseUrl,
+  referralCode,
+}: {
+  baseUrl: string;
+  referralCode: string;
+}) {
+  const link = referralShareUrl(baseUrl, referralCode);
+  return (
+    <Section style={{ padding: "16px 24px 4px", textAlign: "center" }}>
+      <Text
+        style={{
+          margin: 0,
+          fontFamily: SERIF_BODY,
+          fontStyle: "italic",
+          fontSize: "13px",
+          lineHeight: 1.5,
+          color: COLOR.inkMedium,
+        }}
+      >
+        Forward this dispatch to a friend, or share your link:{" "}
+        <Link
+          href={link}
+          style={{
+            color: COLOR.accentBlue,
+            textDecoration: "underline",
+            fontStyle: "normal",
+            fontWeight: 700,
+          }}
+        >
+          {link}
+        </Link>
+      </Text>
+    </Section>
+  );
+}
+
 function Footer({
   baseUrl,
   unsubscribeToken,
@@ -396,6 +447,7 @@ export function DigestEmail(props: DigestContent): React.ReactElement {
     challenge,
     baseUrl,
     unsubscribeToken,
+    referralCode,
   } = props;
 
   const preheader =
@@ -470,6 +522,10 @@ export function DigestEmail(props: DigestContent): React.ReactElement {
           ) : null}
 
           {challenge ? <ChallengeTeaser challenge={challenge} /> : null}
+
+          {referralCode ? (
+            <ReferralLine baseUrl={baseUrl} referralCode={referralCode} />
+          ) : null}
 
           <Footer baseUrl={baseUrl} unsubscribeToken={unsubscribeToken} />
         </Container>

@@ -11,7 +11,9 @@ import {
   date,
   unique,
   index,
+  boolean,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const marketStatusEnum = pgEnum("market_status", [
   "active",
@@ -123,9 +125,20 @@ export const editions = pgTable("editions", {
     { onDelete: "set null" }
   ),
   publishedAt: timestamp("published_at").defaultNow().notNull(),
+  /**
+   * Hedera Consensus Service transaction ID for the publish receipt, in
+   * canonical form `0.0.PAYER@SECONDS.NANOS`. Null until the post-publish
+   * Hedera log succeeds; null is also the steady-state when the Hedera
+   * client is unconfigured (publish is the canonical action, Hedera is
+   * the receipt — we never block publishing on a Hedera failure).
+   */
+  hederaTx: text("hedera_tx"),
+  /** Wall-clock time the Hedera consensus message was submitted. */
+  hederaPublishedAt: timestamp("hedera_published_at"),
 }, (t) => [
   index("editions_date_idx").on(t.date),
   index("editions_volume_idx").on(t.volumeNumber),
+  index("editions_hedera_published_at_idx").on(t.hederaPublishedAt),
 ]);
 
 export const editionArticles = pgTable("edition_articles", {
@@ -310,6 +323,77 @@ export const userPredictions = pgTable(
   ]
 );
 
+/**
+ * Per-session streak aggregation for the Daily Prediction Challenge.
+ *
+ * A "play" advances the streak when the session submits at least one
+ * prediction on a given UTC date. We aggregate here rather than re-walking
+ * `user_predictions` on every read because the challenge surface is
+ * latency-sensitive (LCP) and the table grows linearly with users * days.
+ *
+ * Identity is the localStorage `tfe_session_id` (no auth in v1). One row
+ * per session.
+ *
+ * Rules implemented in `src/lib/challenge/streak.ts`:
+ *  - same-day re-play is idempotent
+ *  - exactly-+1-day gap → increment current
+ *  - +2-day gap with `grace_used_at` older than 7 days → forgive once,
+ *    increment, and stamp grace_used_at = today
+ *  - any larger gap → reset to 1
+ */
+export const dailyChallengeStreaks = pgTable("daily_challenge_streaks", {
+  sessionId: text("session_id").primaryKey(),
+  currentStreak: integer("current_streak").notNull().default(0),
+  longestStreak: integer("longest_streak").notNull().default(0),
+  /** YYYY-MM-DD; null until the first play. */
+  lastPlayedDate: text("last_played_date"),
+  /** YYYY-MM-DD of the last forgiven gap; null when never used. */
+  graceUsedAt: text("grace_used_at"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ── Ad-hoc Article-level Predictions (powers "I Called It" auto-share) ──
+
+export const predictionDirectionEnum = pgEnum("prediction_direction", [
+  "up",
+  "down",
+]);
+
+/**
+ * One row per (session, market) ad-hoc prediction made on an article page.
+ * Distinct from `userPredictions` (daily-challenge slider) — this tracks
+ * binary direction calls so we can light up the gold "CALLED IT" auto-share
+ * when the user's call resolves correctly.
+ */
+export const predictions = pgTable(
+  "predictions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sessionId: text("session_id").notNull(),
+    marketId: uuid("market_id")
+      .notNull()
+      .references(() => markets.id, { onDelete: "cascade" }),
+    articleId: uuid("article_id").references(() => articles.id, {
+      onDelete: "set null",
+    }),
+    direction: predictionDirectionEnum("direction").notNull(),
+    probabilityAtPrediction: decimal("probability_at_prediction", {
+      precision: 5,
+      scale: 2,
+    }),
+    predictedAt: timestamp("predicted_at").defaultNow().notNull(),
+    resolvedAt: timestamp("resolved_at"),
+    wasCorrect: boolean("was_correct"),
+    iCalledItShared: boolean("i_called_it_shared").notNull().default(false),
+  },
+  (t) => [
+    unique("predictions_session_market").on(t.sessionId, t.marketId),
+    index("predictions_session_idx").on(t.sessionId),
+    index("predictions_market_idx").on(t.marketId),
+    index("predictions_resolved_at_idx").on(t.resolvedAt),
+  ]
+);
+
 // ── Email Subscribers (Daily Digest) ──
 
 export const subscribers = pgTable(
@@ -324,6 +408,19 @@ export const subscribers = pgTable(
     /** IANA timezone string, e.g. "America/New_York". */
     timezone: text("timezone").notNull().default("UTC"),
     unsubscribeToken: uuid("unsubscribe_token").notNull().defaultRandom(),
+    /**
+     * 8-char alphanumeric (case-sensitive, friendly alphabet — no 0/O/1/I).
+     * Generated at insert time. URL-safe. Unique across active subscribers.
+     */
+    referralCode: text("referral_code").unique(),
+    /** The referral code used at signup, if any. */
+    referredByCode: text("referred_by_code"),
+    /**
+     * Set the first time the subscriber receives a digest send (or completes
+     * their first daily challenge after signup). Drives the "activated"
+     * stage of the referral funnel.
+     */
+    activatedAt: timestamp("activated_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     lastSentAt: timestamp("last_sent_at"),
   },
@@ -331,6 +428,102 @@ export const subscribers = pgTable(
     index("subscribers_status_idx").on(t.status),
     index("subscribers_unsubscribe_token_idx").on(t.unsubscribeToken),
     index("subscribers_send_hour_idx").on(t.preferredSendHour),
+    index("subscribers_referral_code_idx").on(t.referralCode),
+    index("subscribers_referred_by_code_idx").on(t.referredByCode),
+  ]
+);
+
+// ── Newsletter Referrals (3-stage funnel) ──
+
+/**
+ * One row per referral interaction. Stages flow forward only:
+ *   clicked → signed_up → activated
+ *
+ * - `clicked`  : someone hit `/?ref=<code>` with a previously-unseen session.
+ * - `signed_up`: that visitor (or someone with the code in cookie) subscribed.
+ *   `referredEmail` and `referredSubscriberId` are filled at this point.
+ * - `activated`: the new subscriber received their first digest.
+ *
+ * `ipHash` is sha256(ip + daily salt) — never store raw IPs (privacy).
+ *
+ * Idempotency on click: `(referrerSubscriberId, clickSessionId)` is unique
+ * so a single visitor can't double-count clicks.
+ */
+export const referrals = pgTable(
+  "referrals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    referrerSubscriberId: uuid("referrer_subscriber_id")
+      .notNull()
+      .references(() => subscribers.id, { onDelete: "cascade" }),
+    /** Filled when the referred party signs up. */
+    referredEmail: text("referred_email"),
+    referredSubscriberId: uuid("referred_subscriber_id").references(
+      () => subscribers.id,
+      { onDelete: "set null" }
+    ),
+    /** Visitor session id (from the `tfe_session_id` cookie/header). */
+    clickSessionId: text("click_session_id"),
+    /** "clicked" | "signed_up" | "activated" */
+    stage: text("stage").notNull().default("clicked"),
+    utmSource: text("utm_source"),
+    utmMedium: text("utm_medium"),
+    utmCampaign: text("utm_campaign"),
+    userAgent: text("user_agent"),
+    ipHash: text("ip_hash"),
+    clickedAt: timestamp("clicked_at").defaultNow().notNull(),
+    signedUpAt: timestamp("signed_up_at"),
+    activatedAt: timestamp("activated_at"),
+    rewardGranted: boolean("reward_granted").notNull().default(false),
+  },
+  (t) => [
+    index("referrals_referrer_idx").on(t.referrerSubscriberId),
+    index("referrals_referred_subscriber_idx").on(t.referredSubscriberId),
+    index("referrals_stage_idx").on(t.stage),
+    unique("referrals_referrer_click_session").on(
+      t.referrerSubscriberId,
+      t.clickSessionId
+    ),
+  ]
+);
+
+// ── Web Push Notifications ──
+
+/**
+ * Browser PushSubscription rows. Created when a user opts in via the
+ * `PushOptInPrompt` (homepage). Each row is one device/browser/permission.
+ *
+ * Indexed by:
+ *  - sessionId — to look up all devices for a given session (used by
+ *    `sendPredictionPush` so a single user with multiple devices receives
+ *    the alert on each).
+ *  - endpoint — push services dedupe by endpoint, so we make it unique to
+ *    keep INSERT/UPDATE idempotent across re-subscribe events.
+ *
+ * `topics` is a small text array driving subscriber filtering for the three
+ * fan-out events: 'breaking' (probability >10pt move), 'edition' (every 4h
+ * publish), 'prediction' (a user's submitted prediction resolves).
+ */
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sessionId: text("session_id").notNull(),
+    endpoint: text("endpoint").notNull().unique(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    /** Subscribed event topics. */
+    topics: text("topics")
+      .array()
+      .notNull()
+      .default(sql`ARRAY['breaking','edition','prediction']::text[]`),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    lastActiveAt: timestamp("last_active_at").defaultNow().notNull(),
+  },
+  (t) => [
+    index("push_subscriptions_session_idx").on(t.sessionId),
+    index("push_subscriptions_endpoint_idx").on(t.endpoint),
   ]
 );
 
@@ -354,5 +547,16 @@ export type AccuracyReport = typeof accuracyReports.$inferSelect;
 export type DailyChallenge = typeof dailyChallenges.$inferSelect;
 export type UserPrediction = typeof userPredictions.$inferSelect;
 export type NewUserPrediction = typeof userPredictions.$inferInsert;
+export type DailyChallengeStreak = typeof dailyChallengeStreaks.$inferSelect;
+export type NewDailyChallengeStreak = typeof dailyChallengeStreaks.$inferInsert;
+export type Prediction = typeof predictions.$inferSelect;
+export type NewPrediction = typeof predictions.$inferInsert;
 export type Subscriber = typeof subscribers.$inferSelect;
 export type NewSubscriber = typeof subscribers.$inferInsert;
+export type Referral = typeof referrals.$inferSelect;
+export type NewReferral = typeof referrals.$inferInsert;
+export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;
+export type NewPushSubscriptionRow = typeof pushSubscriptions.$inferInsert;
+
+/** Referral funnel stages (forward-only). */
+export type ReferralStage = "clicked" | "signed_up" | "activated";

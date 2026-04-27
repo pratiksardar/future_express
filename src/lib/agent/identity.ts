@@ -6,8 +6,11 @@
  * Pulls:
  *   - ETH balance on Base (mainnet or sepolia, gated by USE_BASE_SEPOLIA)
  *     via the existing ethers helper used by the publishing-gate cron.
- *   - Most recent Hedera Consensus Service message published by the
- *     configured HEDERA_ACCOUNT_ID, queried from the public mirror node.
+ *   - Most recent Hedera Consensus Service transaction. We look this up
+ *     DB-FIRST (the editions table is the canonical store, populated by
+ *     the publish pipeline post-persistence) and fall back to the
+ *     public Hedera mirror node when the DB has no TX yet (cold start,
+ *     fresh DB, or a publish ran before the Hedera wiring was deployed).
  *
  * Resilience:
  *   - 60s in-process TTL cache so /, /article/*, /transparency don't all
@@ -19,7 +22,10 @@
  *     well-formed AgentIdentity so the strip renders.
  */
 import { ethers } from "ethers";
+import { desc, isNotNull } from "drizzle-orm";
 import { config, RPC, AGENT_WALLET_ADDRESS } from "@/lib/config";
+import { db } from "@/lib/db";
+import { editions } from "@/lib/db/schema";
 
 export type AgentIdentity = {
   email: string;
@@ -140,7 +146,68 @@ function buildHederaTxId(
   return { txId, unixSeconds };
 }
 
-async function fetchLatestHederaTx(): Promise<{
+/**
+ * Parse a Hedera transaction id we wrote to the DB (canonical form
+ * `0.0.PAYER@SECONDS.NANOS`) back into a unix-seconds timestamp.
+ */
+function unixSecondsFromTxId(txId: string): number | null {
+  const at = txId.indexOf("@");
+  if (at === -1) return null;
+  const tail = txId.slice(at + 1);
+  const dot = tail.indexOf(".");
+  const seconds = dot === -1 ? tail : tail.slice(0, dot);
+  const n = parseInt(seconds, 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * DB-first Hedera lookup: read the most recent edition with a non-null
+ * hedera_tx. This is the canonical record of what we published — faster
+ * than the mirror node and not subject to mirror propagation delay.
+ *
+ * Returns null when the table has no rows yet (cold start) so callers
+ * can fall through to mirror-node lookup.
+ */
+async function fetchLatestHederaTxFromDb(): Promise<{
+  txId: string;
+  unixSeconds: number;
+  explorerNetwork: "mainnet" | "testnet";
+} | null> {
+  try {
+    const [row] = await db
+      .select({
+        hederaTx: editions.hederaTx,
+        hederaPublishedAt: editions.hederaPublishedAt,
+      })
+      .from(editions)
+      .where(isNotNull(editions.hederaTx))
+      .orderBy(desc(editions.hederaPublishedAt))
+      .limit(1);
+
+    if (!row?.hederaTx) return null;
+
+    const tsFromTx = unixSecondsFromTxId(row.hederaTx);
+    const tsFromCol = row.hederaPublishedAt
+      ? Math.floor(row.hederaPublishedAt.getTime() / 1000)
+      : null;
+
+    return {
+      txId: row.hederaTx,
+      unixSeconds: tsFromTx ?? tsFromCol ?? nowSec(),
+      // Our Hedera client uses Client.forTestnet(); flip when we move ops
+      // to mainnet (track via env if/when that happens).
+      explorerNetwork: "testnet",
+    };
+  } catch (e) {
+    console.warn(
+      "[agent/identity] DB hedera lookup failed:",
+      e instanceof Error ? e.message : e,
+    );
+    return null;
+  }
+}
+
+async function fetchLatestHederaTxFromMirror(): Promise<{
   txId: string;
   unixSeconds: number;
   explorerNetwork: "mainnet" | "testnet";
@@ -158,10 +225,15 @@ async function fetchLatestHederaTx(): Promise<{
     ? "testnet"
     : "mainnet";
 
-  // Filter messages by payer (our account) ordered by newest first.
-  const url = `https://${mirrorHost}/api/v1/topics/messages?account.id=${encodeURIComponent(
-    accountId,
-  )}&order=desc&limit=1`;
+  // If we have a topic id, scope the lookup to that topic — much more
+  // accurate than "any message from this account". Falls back to
+  // account-level lookup when HEDERA_TOPIC_ID is not set.
+  const topicId = process.env.HEDERA_TOPIC_ID?.trim();
+  const url = topicId
+    ? `https://${mirrorHost}/api/v1/topics/${encodeURIComponent(topicId)}/messages?order=desc&limit=1`
+    : `https://${mirrorHost}/api/v1/topics/messages?account.id=${encodeURIComponent(
+        accountId,
+      )}&order=desc&limit=1`;
 
   const res = await withTimeout(
     fetch(url, { headers: { accept: "application/json" } }),
@@ -251,18 +323,38 @@ async function loadFresh(): Promise<AgentIdentity> {
   let hederaTx: string | null = null;
   let hederaTimestamp: number | null = null;
   let hederaExplorerUrl: string | null = null;
+
+  // DB-first: the editions table is canonically what we published. Faster
+  // than the mirror node and immune to mirror propagation lag.
   try {
-    const hh = await fetchLatestHederaTx();
-    if (hh) {
-      hederaTx = hh.txId;
-      hederaTimestamp = hh.unixSeconds;
-      hederaExplorerUrl = hederaExplorerFor(hh.txId, hh.explorerNetwork);
+    const fromDb = await fetchLatestHederaTxFromDb();
+    if (fromDb) {
+      hederaTx = fromDb.txId;
+      hederaTimestamp = fromDb.unixSeconds;
+      hederaExplorerUrl = hederaExplorerFor(fromDb.txId, fromDb.explorerNetwork);
     }
   } catch (e) {
     console.warn(
-      "[agent/identity] Hedera mirror fetch failed:",
+      "[agent/identity] DB hedera lookup threw:",
       e instanceof Error ? e.message : e,
     );
+  }
+
+  // Mirror-node fallback for cold start (no editions row with a TX yet).
+  if (!hederaTx) {
+    try {
+      const hh = await fetchLatestHederaTxFromMirror();
+      if (hh) {
+        hederaTx = hh.txId;
+        hederaTimestamp = hh.unixSeconds;
+        hederaExplorerUrl = hederaExplorerFor(hh.txId, hh.explorerNetwork);
+      }
+    } catch (e) {
+      console.warn(
+        "[agent/identity] Hedera mirror fetch failed:",
+        e instanceof Error ? e.message : e,
+      );
+    }
   }
 
   // If Base RPC failed and we have a last-known good, surface it stale.
@@ -342,4 +434,63 @@ export function truncateHederaTx(tx: string, tailLen = 9): string {
   const rest = tx.slice(at + 1);
   if (rest.length <= tailLen) return tx;
   return `${head}@…${rest.slice(-tailLen)}`;
+}
+
+/**
+ * Build a Hashscan transaction URL for a given Hedera transaction id.
+ * Currently hardcodes testnet to match Client.forTestnet() in the Hedera
+ * client; flip when we move ops to mainnet.
+ */
+export function hashscanUrlForTx(tx: string | null): string | null {
+  return hederaExplorerFor(tx, "testnet");
+}
+
+/**
+ * List the most recent N editions with non-null Hedera TX. Used by the
+ * /transparency page's "Log of editions" section. Returns chronologically
+ * descending (newest first). Tolerant to DB failure — returns [] on error.
+ */
+export type EditionLogEntry = {
+  editionId: string;
+  volumeNumber: number | null;
+  hederaTx: string;
+  hederaPublishedAt: Date | null;
+  hashscanUrl: string;
+};
+
+export async function listRecentEditionTxs(limit = 10): Promise<EditionLogEntry[]> {
+  try {
+    const rows = await db
+      .select({
+        id: editions.id,
+        volumeNumber: editions.volumeNumber,
+        hederaTx: editions.hederaTx,
+        hederaPublishedAt: editions.hederaPublishedAt,
+      })
+      .from(editions)
+      .where(isNotNull(editions.hederaTx))
+      .orderBy(desc(editions.hederaPublishedAt))
+      .limit(limit);
+
+    const result: EditionLogEntry[] = [];
+    for (const row of rows) {
+      if (!row.hederaTx) continue;
+      const url = hashscanUrlForTx(row.hederaTx);
+      if (!url) continue;
+      result.push({
+        editionId: row.id,
+        volumeNumber: row.volumeNumber ?? null,
+        hederaTx: row.hederaTx,
+        hederaPublishedAt: row.hederaPublishedAt ?? null,
+        hashscanUrl: url,
+      });
+    }
+    return result;
+  } catch (e) {
+    console.warn(
+      "[agent/identity] listRecentEditionTxs failed:",
+      e instanceof Error ? e.message : e,
+    );
+    return [];
+  }
 }

@@ -1,7 +1,7 @@
 import { getEditionTopNewsPerSource } from "@/lib/config";
 import { db } from "@/lib/db";
 import { articles, markets, editions, editionArticles } from "@/lib/db/schema";
-import { eq, desc, and, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { eq, desc, and, isNotNull, isNull } from "drizzle-orm";
 import { searchWeb } from "./research";
 import { buildArticlePrompt } from "./prompts";
 import { chatCompletion, generateArticleImage } from "./llm";
@@ -95,7 +95,7 @@ export async function generateArticleForMarket(
   try {
     // Decentralized AI Inference via 0G Compute Network
     let raw = "{}";
-    let modelUsed = "0G Compute (llama-3.3)";
+    const modelUsed = "0G Compute (llama-3.3)";
     try {
       raw = await get0GAIResponse(prompt, "You are a professional journalist. You must output strictly valid JSON matching the requested schema.");
     } catch (err) {
@@ -200,6 +200,7 @@ export async function generateArticleForMarket(
 
 import { buildEditorPersonaPrompt } from "./prompts";
 import { getAgentBalance, submitAgentTransactionWithBuilderCode } from "@/lib/blockchain/cdp/client";
+import { logEditionPublishedToHedera } from "@/lib/blockchain/hedera/publishLog";
 
 /** Creates a new edition and generates short articles for top markets by volume. Runs every 4h. */
 export async function runEditionPipeline(): Promise<{
@@ -209,6 +210,7 @@ export async function runEditionPipeline(): Promise<{
   failed: number;
   errors: string[];
   playcards?: { generated: number; failed: number; errors: string[] };
+  hederaTx?: string | null;
 }> {
   // Base Mainnet: Self-Sustaining Protocol Solvency Check
   const balanceCheck = await getAgentBalance();
@@ -241,7 +243,7 @@ export async function runEditionPipeline(): Promise<{
       volumeNumber: nextVolume,
       publishedAt: now,
     })
-    .returning({ id: editions.id, volumeNumber: editions.volumeNumber });
+    .returning({ id: editions.id, volumeNumber: editions.volumeNumber, publishedAt: editions.publishedAt });
 
   const editionId = edition?.id ?? "";
   if (!editionId)
@@ -318,19 +320,10 @@ export async function runEditionPipeline(): Promise<{
     ? layoutDecisions.map(d => ({ market: topMarkets.find(m => m.id === d.marketId), decision: d })).filter(x => x.market)
     : topMarkets.map((m, i) => ({ market: m, decision: { marketId: m.id, position: i + 1, requiresImage: i < 5, newsAngle: "" } })); // Defaults to 5 images if LLM fails
 
-  // Hedera Consensus Service: Log editorial layout for agentic transparency
-  if (orderedMarkets.length > 0) {
-    try {
-      const { logEditorialDecision } = await import("@/lib/blockchain/hedera/client");
-      await logEditorialDecision(editionId, orderedMarkets.map(m => m.decision));
-    } catch (err) {
-      loggers.hedera.warn({ err }, "Hedera integration not imported or failed");
-    }
-  }
-
   let playcardsGenerated = 0;
   let playcardsFailed = 0;
   const playcardErrors: string[] = [];
+  const persistedArticleIds: string[] = [];
 
   for (const { market, decision } of orderedMarkets) {
     if (!market) continue;
@@ -348,6 +341,7 @@ export async function runEditionPipeline(): Promise<{
         .set({ position: decision.position })
         .where(eq(editionArticles.articleId, result.articleId));
       generated++;
+      persistedArticleIds.push(result.articleId);
       if (result.playcardOk) playcardsGenerated++;
       else if (result.articleId) {
         playcardsFailed++;
@@ -368,6 +362,21 @@ export async function runEditionPipeline(): Promise<{
       { editionId, playcards: playcardsGenerated, playcardsFailed },
       "Social playcards generated with articles"
     );
+  }
+
+  // ── Hedera Consensus Service: post-publish editorial receipt ──
+  // Wired AFTER articles are persisted. This is the canonical "edition_published"
+  // event that the /transparency surface reads back via editions.hedera_tx. We
+  // never block the publish pipeline on a Hedera failure — publish is canonical,
+  // Hedera is the receipt. See logEditionPublishedToHedera for try/catch.
+  let hederaTx: string | null = null;
+  if (generated > 0 && persistedArticleIds.length > 0) {
+    hederaTx = await logEditionPublishedToHedera({
+      editionId,
+      volumeNumber: edition?.volumeNumber ?? nextVolume,
+      publishedAt: edition?.publishedAt ?? now,
+      articleIds: persistedArticleIds,
+    });
   }
 
   // Post-Edition: Autonomous Sub-wallet 8021 tracking execution payment
@@ -393,6 +402,7 @@ export async function runEditionPipeline(): Promise<{
     failed,
     errors,
     playcards: playcardsResult,
+    hederaTx,
   };
 }
 

@@ -7,6 +7,7 @@ import { ImageResponse } from "next/og";
 import { fitText, fitWithBestSize, PRETEXT_MEASUREMENT_FAMILY } from "./textFit";
 
 export type PlaycardFormat = "twitter" | "instagram" | "portrait" | "tiktok";
+export type PlaycardVariant = "default" | "called-it";
 export type CTAVariant = "A" | "B" | "C";
 
 export type PlaycardPayload = {
@@ -22,6 +23,18 @@ export type PlaycardPayload = {
   probability?: number | null;
   format?: PlaycardFormat;
   ctaVariant?: CTAVariant;
+  /**
+   * Layout VARIANT (orthogonal to format/dimensions). When `"called-it"`, the
+   * card renders the gold "I Called It" brag-share treatment. Default keeps
+   * the byte-identical editorial layout used by the OG image route.
+   */
+  variant?: PlaycardVariant;
+  /** Probability the user predicted (only used by called-it variant). */
+  predictedProbability?: number | null;
+  /** Display string for when the prediction was filed (e.g. "Apr 12"). */
+  predictedAt?: string | null;
+  /** Display string for when the market resolved (e.g. "Apr 25"). */
+  resolvedAt?: string | null;
 };
 
 const DIMS: Record<PlaycardFormat, { w: number; h: number }> = {
@@ -38,8 +51,12 @@ const C = {
   inkLight: "#6b7078",
   paper: "#f6f3ec",
   paperLine: "#e4dfd4",
+  /** Gold/cream paper for the "called-it" variant — warmer than default. */
+  paperGold: "#f9efd5",
+  paperGoldLine: "#ecdfb5",
   accent: "#1b3a5c",
   gold: "#c8a74a",
+  goldDeep: "#8a6a1c",
   red: "#c0392b",
   white: "#ffffff",
 } as const;
@@ -207,6 +224,13 @@ function EditorialCard({
   const categoryLabel = (payload.category && CATEGORY_LABELS[payload.category]) || payload.category || "";
   const categoryAccent = (payload.category && CATEGORY_ACCENT[payload.category]) || C.red;
 
+  // ── Variant switches ─────────────────────────────────────────────────────
+  // The "called-it" variant is a brag-share retread of the editorial card.
+  // It's gated behind a single boolean so the default path stays byte-identical.
+  const isCalledIt = payload.variant === "called-it";
+  const cardPaper = isCalledIt ? C.paperGold : C.paper;
+  const cardPaperLine = isCalledIt ? C.paperGoldLine : C.paperLine;
+
   // Per-format tunables to keep the JSX readable
   const mastheadFontSize =
     format === "twitter" ? 54 : format === "instagram" ? 52 : format === "tiktok" ? 64 : 50;
@@ -272,6 +296,11 @@ function EditorialCard({
   const dropCap = body ? body.charAt(0) : "";
   const bodyRest = body ? body.slice(1) : "";
 
+  // Sizes for the gold "CALLED IT" stamp scale with format so it reads at thumbnail.
+  const stampFontSize = format === "tiktok" ? 110 : format === "twitter" ? 56 : format === "instagram" ? 92 : 96;
+  const stampOffsetTop = format === "tiktok" ? 240 : format === "twitter" ? 110 : 200;
+  const stampOffsetRight = format === "tiktok" ? 60 : format === "twitter" ? 20 : 40;
+
   return (
     <div
       style={{
@@ -279,10 +308,11 @@ function EditorialCard({
         height: h,
         display: "flex",
         flexDirection: "column",
-        backgroundColor: C.paper,
+        backgroundColor: cardPaper,
         color: C.ink,
         fontFamily: "Georgia, 'Times New Roman', serif",
         overflow: "hidden",
+        position: "relative",
       }}
     >
       <div
@@ -300,7 +330,7 @@ function EditorialCard({
           flexDirection: "column",
           padding: `${format === "tiktok" ? 18 : 12}px ${scale.padX}px ${format === "tiktok" ? 14 : 10}px ${scale.padX}px`,
           borderBottom: `2px solid ${C.ink}`,
-          backgroundColor: C.paper,
+          backgroundColor: cardPaper,
           flexShrink: 0,
         }}
       >
@@ -407,6 +437,27 @@ function EditorialCard({
           </div>
         )}
 
+        {/* "Called it" kicker strap — predicted/resolved timeline above headline */}
+        {isCalledIt && (payload.predictedAt || payload.resolvedAt) && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              fontSize: format === "tiktok" ? 22 : format === "twitter" ? 14 : 18,
+              fontWeight: 700,
+              letterSpacing: "0.16em",
+              textTransform: "uppercase",
+              color: C.goldDeep,
+            }}
+          >
+            <span style={{ color: C.gold }}>▶</span>
+            <span>
+              Predicted {payload.predictedAt ?? "—"} · Resolved {payload.resolvedAt ?? "—"}
+            </span>
+          </div>
+        )}
+
         <h1
           style={{
             margin: 0,
@@ -442,7 +493,7 @@ function EditorialCard({
             minHeight: 0,
             display: "flex",
             flexDirection: "column",
-            backgroundColor: C.paperLine,
+            backgroundColor: cardPaperLine,
             marginLeft: -scale.padX,
             marginRight: -scale.padX,
             paddingLeft: scale.padX,
@@ -494,7 +545,8 @@ function EditorialCard({
         </div>
       </div>
 
-      {payload.probability !== null && payload.probability !== undefined && (
+      {/* Probability widget — default vs called-it differ in the bottom strip. */}
+      {!isCalledIt && payload.probability !== null && payload.probability !== undefined && (
         <div
           style={{
             width: "100%",
@@ -520,6 +572,78 @@ function EditorialCard({
         </div>
       )}
 
+      {isCalledIt && (
+        <div
+          style={{
+            width: "100%",
+            backgroundColor: C.accent,
+            borderTop: "1px solid rgba(255,255,255,0.12)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: format === "tiktok" ? 18 : 14,
+            padding: format === "tiktok" ? "22px 32px" : "16px 24px",
+            color: C.white,
+            flexShrink: 0,
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "baseline", gap: format === "tiktok" ? 18 : 12 }}>
+            <span
+              style={{
+                fontSize: format === "tiktok" ? 18 : 14,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                opacity: 0.72,
+              }}
+            >
+              Predicted
+            </span>
+            <span
+              style={{
+                fontSize: format === "tiktok" ? 44 : 32,
+                fontWeight: 900,
+                color: C.gold,
+                fontFamily: "Georgia, 'Times New Roman', serif",
+              }}
+            >
+              {payload.predictedProbability != null ? `${Math.round(payload.predictedProbability)}%` : "—"}
+            </span>
+            <span style={{ opacity: 0.5, fontSize: format === "tiktok" ? 22 : 16 }}>·</span>
+            <span
+              style={{
+                fontSize: format === "tiktok" ? 18 : 14,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                opacity: 0.72,
+              }}
+            >
+              Final
+            </span>
+            <span
+              style={{
+                fontSize: format === "tiktok" ? 44 : 32,
+                fontWeight: 900,
+                color: C.white,
+              }}
+            >
+              100%
+            </span>
+          </div>
+          <span
+            style={{
+              fontSize: format === "tiktok" ? 22 : 16,
+              fontWeight: 900,
+              fontStyle: "italic",
+              color: C.gold,
+              letterSpacing: "0.04em",
+            }}
+          >
+            You called it.
+          </span>
+        </div>
+      )}
+
       <div
         style={{
           width: "100%",
@@ -536,7 +660,9 @@ function EditorialCard({
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 3, flexShrink: 0 }}>
           <span style={{ fontSize: format === "tiktok" ? 18 : 14, fontWeight: 900, letterSpacing: "0.12em", textTransform: "uppercase" }}>{PAPER_NAME}</span>
-          <span style={{ fontSize: format === "tiktok" ? 13 : 11, letterSpacing: "0.08em", opacity: 0.72 }}>Tomorrow's News</span>
+          <span style={{ fontSize: format === "tiktok" ? 13 : 11, letterSpacing: "0.08em", opacity: 0.72 }}>
+            {isCalledIt ? "Verified by The Future Express ↗" : "Tomorrow's News"}
+          </span>
         </div>
 
         <div
@@ -551,15 +677,61 @@ function EditorialCard({
             flexShrink: 1,
           }}
         >
-          <span style={{ fontSize: format === "tiktok" ? 16 : 13, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>{ctaPrimary}</span>
+          <span style={{ fontSize: format === "tiktok" ? 16 : 13, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>
+            {isCalledIt ? "Verified by The Future Express ↗" : ctaPrimary}
+          </span>
           <span style={{ fontSize: format === "tiktok" ? 22 : 17, fontWeight: 900, color: C.gold, marginTop: 2 }}>↗ {CTA_DOMAIN}</span>
           {format === "tiktok" && (
             <span style={{ fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.65, marginTop: 4 }}>
-              Save & Swipe ↑
+              {isCalledIt ? "Share your call ↗" : "Save & Swipe ↑"}
             </span>
           )}
         </div>
       </div>
+
+      {/* "CALLED IT" stamp — overlay last so it floats over the masthead corner.
+          Rotated 90deg, double-stroke border, gold ink, display serif italic. */}
+      {isCalledIt && (
+        <div
+          style={{
+            position: "absolute",
+            top: stampOffsetTop,
+            right: stampOffsetRight,
+            display: "flex",
+            transform: "rotate(8deg)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              padding: format === "tiktok" ? "18px 32px" : format === "twitter" ? "8px 18px" : "14px 26px",
+              border: `4px solid ${C.goldDeep}`,
+              outline: `2px solid ${C.goldDeep}`,
+              outlineOffset: 4,
+              backgroundColor: "rgba(249, 239, 213, 0.55)",
+              opacity: 0.95,
+            }}
+          >
+            <span
+              style={{
+                fontSize: stampFontSize,
+                fontWeight: 900,
+                fontStyle: "italic",
+                fontFamily: "Georgia, 'Times New Roman', serif",
+                color: C.goldDeep,
+                letterSpacing: "0.04em",
+                lineHeight: 1,
+                textTransform: "uppercase",
+                textShadow: "2px 2px 0 rgba(138,106,28,0.18)",
+              }}
+            >
+              Called It
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -588,9 +760,9 @@ export async function generatePlaycardResponse(
   const format: PlaycardFormat = payload.format ?? (hasImage ? "portrait" : "instagram");
   const { w, h } = DIMS[format];
 
-  // The OG-image path uses the twitter format; cache it aggressively.
-  // Other formats (saved cards, downloads) shouldn't be cached at the CDN.
-  const isOgRender = format === "twitter";
+  // The OG-image path uses the twitter format; cache it aggressively. The
+  // called-it variant is user-personalised, so never CDN-cache it.
+  const isOgRender = format === "twitter" && payload.variant !== "called-it";
   const cacheControl = isOgRender
     ? "public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800"
     : "public, max-age=0, must-revalidate";

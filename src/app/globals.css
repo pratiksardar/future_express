@@ -1059,3 +1059,170 @@ h1, h2 {
 .fe-v4-masthead-shell {
   position: relative;
 }
+
+/* ── Daily Challenge Streak Counter ──────────────────────────────────────
+   Shows "DAY N" in display serif italic with a small flame mark, plus a
+   7-day calendar dot grid. Sits at the top of the challenge card.
+   Sized small — ornament, not centerpiece. Broadsheet aesthetic; no big
+   Duolingo-style pulses except the at-risk warning.
+   ────────────────────────────────────────────────────────────────────── */
+
+.challenge-streak {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-rule);
+  flex-wrap: wrap;
+}
+
+.challenge-streak-label {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: clamp(18px, 5vw, 22px);
+  color: var(--color-ink);
+  letter-spacing: -0.005em;
+  line-height: 1;
+}
+
+.challenge-streak-flame {
+  width: 14px;
+  height: 16px;
+  fill: var(--color-accent-red);
+  flex-shrink: 0;
+}
+
+.challenge-streak-num {
+  font-family: var(--font-data);
+  font-weight: 700;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-style: normal;
+  display: inline-block;
+  transition: transform var(--motion-base, 200ms) var(--ease-stamp, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+.challenge-streak-num[data-pulse="true"] {
+  animation: challenge-streak-bump 320ms var(--ease-stamp, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+@keyframes challenge-streak-bump {
+  0%   { transform: scale(0.8); }
+  50%  { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.challenge-streak-best {
+  font-family: var(--font-sub);
+  font-style: italic;
+  font-size: var(--type-meta-size, 13px);
+  color: var(--color-ink-light);
+  letter-spacing: 0.02em;
+}
+
+/* 7-day dot grid (oldest → newest, today is rightmost) */
+.challenge-streak-grid {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.challenge-streak-dot {
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--color-rule);
+  background: transparent;
+  flex-shrink: 0;
+}
+.challenge-streak-dot[data-day-state="played"] {
+  background: var(--color-spot-green);
+  border-color: var(--color-spot-green);
+}
+.challenge-streak-dot[data-day-state="played-today"] {
+  background: var(--color-spot-green);
+  border-color: var(--color-spot-green);
+}
+.challenge-streak-dot[data-day-state="missed"] {
+  background: transparent;
+  border-color: var(--color-rule);
+}
+.challenge-streak-dot[data-day-state="today-pending"] {
+  background: transparent;
+  border: 1.5px solid var(--color-accent-gold);
+  animation: challenge-streak-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes challenge-streak-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+
+/* At-risk / recovery banners */
+.challenge-streak-banner {
+  margin-top: -8px;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-accent-gold);
+  background: var(--color-paper-cream);
+  font-family: var(--font-sub);
+  font-style: italic;
+  font-size: var(--type-meta-size, 13px);
+  color: var(--color-ink-medium);
+  text-align: center;
+}
+.challenge-streak-banner[data-tone="risk"] {
+  border-color: var(--color-accent-red);
+  color: var(--color-accent-red);
+}
+
+/* Milestone toast — broadsheet, not bird */
+.challenge-milestone-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 50;
+  max-width: min(440px, calc(100vw - 32px));
+  padding: 14px 20px;
+  background: var(--color-paper-cream);
+  border: var(--rule-medium, 2px solid var(--color-ink));
+  outline: 1px solid var(--color-accent-gold);
+  outline-offset: 4px;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 18px;
+  text-align: center;
+  color: var(--color-ink);
+  animation: challenge-milestone-in 360ms var(--ease-stamp, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+.challenge-milestone-toast small {
+  display: block;
+  font-family: var(--font-sub);
+  font-style: italic;
+  font-weight: 400;
+  font-size: var(--type-meta-size, 13px);
+  color: var(--color-ink-light);
+  margin-top: 4px;
+  letter-spacing: 0.02em;
+}
+
+@keyframes challenge-milestone-in {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(8px) scale(0.96); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .challenge-streak-num,
+  .challenge-streak-dot[data-day-state="today-pending"],
+  .challenge-milestone-toast {
+    animation: none !important;
+    transition: none !important;
+  }
+}

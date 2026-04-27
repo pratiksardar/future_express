@@ -9,6 +9,12 @@ import { useState } from "react";
  * detects its own IANA timezone via Intl so the cron can deliver locally at
  * 7AM. We do NOT prompt the user for a TZ — the inferred one is correct
  * 99% of the time.
+ *
+ * Referral attribution: when present we forward
+ *   - `referredByCode` from `?ref=` query param (or fall back to the
+ *     `tfe_ref` cookie which middleware sets server-side).
+ *   - `sessionId` from the `tfe_session_id` localStorage entry that
+ *     other surfaces (DailyChallenge, LiveReaderCount) write to.
  */
 export function NewsletterSignup() {
   const [email, setEmail] = useState("");
@@ -29,10 +35,34 @@ export function NewsletterSignup() {
           ? Intl.DateTimeFormat().resolvedOptions().timeZone
           : "UTC";
 
+      // Read ref code from URL first (recently-clicked link), fallback to
+      // the tfe_ref cookie (set by middleware on first visit).
+      const referredByCode = (() => {
+        if (typeof window === "undefined") return null;
+        const fromUrl = new URL(window.location.href).searchParams.get("ref");
+        if (fromUrl) return fromUrl;
+        const m = document.cookie.match(/(?:^|;\s*)tfe_ref=([^;]+)/);
+        return m ? decodeURIComponent(m[1]) : null;
+      })();
+
+      const sessionId = (() => {
+        if (typeof window === "undefined") return null;
+        try {
+          return window.localStorage.getItem("tfe_session_id");
+        } catch {
+          return null;
+        }
+      })();
+
       const res = await fetch("/api/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), timezone }),
+        body: JSON.stringify({
+          email: email.trim(),
+          timezone,
+          ...(referredByCode ? { referredByCode } : {}),
+          ...(sessionId ? { sessionId } : {}),
+        }),
       });
 
       if (res.ok) {
