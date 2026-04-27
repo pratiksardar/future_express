@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const SWAP_GATEWAY_URL = process.env.SWAP_GATEWAY_URL || "http://localhost:4001";
 
@@ -8,6 +9,11 @@ const nextConfig: NextConfig = {
   // and let Node `require` it from `node_modules` at runtime. Pretext only needs
   // canvas for measureText — used by the playcard text fitter.
   serverExternalPackages: ["@napi-rs/canvas"],
+  turbopack: {
+    // Pin workspace root to this package so Vercel doesn't confuse it with the
+    // parent /Users/lemon directory which also has a package.json + package-lock.json.
+    root: path.resolve(__dirname),
+  },
   images: {
     remotePatterns: [
       {

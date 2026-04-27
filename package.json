@@ -52,6 +52,10 @@
     "web-push": "^3.6.7",
     "zod": "^4.3.6"
   },
+  "optionalDependencies": {
+    "@napi-rs/canvas-linux-x64-gnu": "^0.1.100",
+    "@napi-rs/canvas-linux-arm64-gnu": "^0.1.100"
+  },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",

@@ -34,7 +34,7 @@ function maybeGenerateSessionId(): string {
   return crypto.randomUUID();
 }
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const url = req.nextUrl;
   const ref = url.searchParams.get("ref");
 
